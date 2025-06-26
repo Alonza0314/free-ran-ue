@@ -103,7 +103,6 @@ func buildNgapSetupRequest(gnbId []byte, gnbName string, plmnId ngapType.PLMNIde
 
 func getNgapSetupRequest(gnbId []byte, gnbName string, plmnId ngapType.PLMNIdentity, tai ngapType.TAI, snssai ngapType.SNSSAI) ([]byte, error) {
 	return ngap.Encoder(buildNgapSetupRequest(gnbId, gnbName, plmnId, tai, snssai))
-	// return ngap.Encoder(BuildNGSetupRequest())
 }
 
 func ngapSetup(n2Conn *sctp.SCTPConn, gnbId []byte, gnbName string, plmnId ngapType.PLMNIdentity, tai ngapType.TAI, snssai ngapType.SNSSAI) error {
