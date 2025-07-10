@@ -206,7 +206,7 @@ func (g *Gnb) connectToAmf() error {
 	if err != nil {
 		return fmt.Errorf("Error connecting to AMF: %v", err)
 	}
-	g.SctpLog.Debugln("Dail SCTP to AMF success")
+	g.SctpLog.Debugln("Dial SCTP to AMF success")
 
 	info, err := conn.GetDefaultSentParam()
 	if err != nil {
