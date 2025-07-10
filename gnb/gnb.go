@@ -47,13 +47,13 @@ type Gnb struct {
 
 	activeConns sync.Map
 
-	logger *logger.Logger
+	*logger.GnbLogger
 }
 
-func NewGnb(config *model.GnbConfig, logger *logger.Logger) *Gnb {
+func NewGnb(config *model.GnbConfig, gnbLogger *logger.GnbLogger) *Gnb {
 	gnbId, err := util.HexStringToBytes(config.Gnb.GnbId)
 	if err != nil {
-		logger.Error("CONFIG", fmt.Sprintf("Error converting gnbId to escaped: %v", err))
+		gnbLogger.CfgLog.Errorf("Error converting gnbId to escaped: %v", err)
 		return nil
 	}
 
@@ -62,7 +62,7 @@ func NewGnb(config *model.GnbConfig, logger *logger.Logger) *Gnb {
 		Mnc: config.Gnb.PlmnId.Mnc,
 	})
 	if err != nil {
-		logger.Error("CONFIG", fmt.Sprintf("Error converting plmnId to ngap: %v", err))
+		gnbLogger.CfgLog.Errorf("Error converting plmnId to ngap: %v", err)
 		return nil
 	}
 
@@ -74,13 +74,13 @@ func NewGnb(config *model.GnbConfig, logger *logger.Logger) *Gnb {
 		},
 	})
 	if err != nil {
-		logger.Error("CONFIG", fmt.Sprintf("Error converting tai to ngap: %v", err))
+		gnbLogger.CfgLog.Errorf("Error converting tai to ngap: %v", err)
 		return nil
 	}
 
 	sstInt, err := strconv.Atoi(config.Gnb.Snssai.Sst)
 	if err != nil {
-		logger.Error("CONFIG", fmt.Sprintf("Error converting sst to int: %v", err))
+		gnbLogger.CfgLog.Errorf("Error converting sst to int: %v", err)
 		return nil
 	}
 	snssai, err := util.SNssaiToNgap(models.Snssai{
@@ -88,7 +88,7 @@ func NewGnb(config *model.GnbConfig, logger *logger.Logger) *Gnb {
 		Sd:  config.Gnb.Snssai.Sd,
 	})
 	if err != nil {
-		logger.Error("CONFIG", fmt.Sprintf("Error converting snssai to ngap: %v", err))
+		gnbLogger.CfgLog.Errorf("Error converting snssai to ngap: %v", err)
 		return nil
 	}
 
@@ -110,24 +110,24 @@ func NewGnb(config *model.GnbConfig, logger *logger.Logger) *Gnb {
 		tai:    tai,
 		snssai: snssai,
 
-		logger: logger,
+		GnbLogger: gnbLogger,
 	}
 }
 
 func (g *Gnb) Start(ctx context.Context) error {
-	g.logger.Info("GNB", "Starting GNB")
+	g.RanLog.Infoln("Starting GNB")
 	if err := g.connectToAmf(); err != nil {
-		g.logger.Error("SCTP", err.Error())
+		g.SctpLog.Errorf("Error connecting to AMF: %v", err)
 		return err
 	}
 
 	if err := g.setupN2(); err != nil {
-		g.logger.Error("NGAP", fmt.Sprintf("Error setting up N2: %v", err))
+		g.NgapLog.Errorf("Error setting up N2: %v", err)
 		return err
 	}
 
 	if err := g.startRanListener(); err != nil {
-		g.logger.Error("RAN", fmt.Sprintf("Error starting RAN listener: %v", err))
+		g.RanLog.Errorf("Error starting gNB listener: %v", err)
 		return err
 	}
 
@@ -142,27 +142,28 @@ func (g *Gnb) Start(ctx context.Context) error {
 					if errors.Is(err, net.ErrClosed) {
 						return
 					}
-					g.logger.Error("RAN", fmt.Sprintf("Error accepting RAN connection: %v", err))
+					g.RanLog.Errorf("Error accepting UE connection: %v", err)
 					continue
 				}
-				g.logger.Info("RAN", fmt.Sprintf("New UE connection accepted from: %v", conn.RemoteAddr()))
+				g.RanLog.Infof("New UE connection accepted from: %v", conn.RemoteAddr())
 				g.activeConns.Store(conn, struct{}{})
 				go g.handleRanConnection(ctx, conn)
 			}
 		}
 	}()
 
-	g.logger.Info("GNB", "GNB started")
+	g.RanLog.Infoln("GNB started")
 	return nil
 }
 
 func (g *Gnb) Stop() {
-	g.logger.Info("GNB", "Stopping GNB")
+	g.RanLog.Infoln("Stopping GNB")
 	if err := (*g.ranListener).Close(); err != nil {
-		g.logger.Error("RAN", fmt.Sprintf("Error stopping GNB: %v", err))
+		g.RanLog.Errorf("Error stopping gNB: %v", err)
 		return
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("RAN listener stopped at %s:%d", g.ranIp, g.ranPort))
+	g.RanLog.Debugln("gNB listener stopped")
+	g.RanLog.Traceln("gNB listener stopped at %s:%d", g.ranIp, g.ranPort)
 
 	var wg sync.WaitGroup
 	g.activeConns.Range(func(key, value interface{}) bool {
@@ -170,104 +171,116 @@ func (g *Gnb) Stop() {
 		go func(conn net.Conn) {
 			defer wg.Done()
 			if conn, ok := key.(net.Conn); ok {
+				g.RanLog.Tracef("UE %v still in connection", conn.RemoteAddr())
 				if err := conn.Close(); err != nil {
-					g.logger.Error("RAN", fmt.Sprintf("Error closing UE connection: %v", err))
+					g.RanLog.Errorf("Error closing UE connection: %v", err)
 				}
 			}
-			g.logger.Debug("RAN", fmt.Sprintf("Closed UE connection from: %v", conn.RemoteAddr()))
+			g.RanLog.Debugf("Closed UE connection from: %v", conn.RemoteAddr())
 		}(key.(net.Conn))
 		return true
 	})
 	wg.Wait()
 
 	if err := g.n2Conn.Close(); err != nil {
-		g.logger.Error("SCTP", fmt.Sprintf("Error stopping GNB: %v", err))
+		g.SctpLog.Errorf("Error stopping N2 connection: %v", err)
 		return
 	}
-	g.logger.Debug("SCTP", fmt.Sprintf("N2 connection closed at %s:%d", g.gnbN2Ip, g.gnbN2Port))
-	g.logger.Info("GNB", "GNB stopped")
+	g.SctpLog.Debugln("N2 connection closed")
+	g.SctpLog.Traceln("N2 connection closed at %s:%d", g.gnbN2Ip, g.gnbN2Port)
+
+	g.RanLog.Infoln("GNB stopped")
 }
 
 func (g *Gnb) connectToAmf() error {
-	g.logger.Info("GNB", "Connecting to AMF")
+	g.RanLog.Infoln("Connecting to AMF")
 
 	amfAddr, gnbAddr, err := getAmfAndGnbSctpN2Addr(g.amfN2Ip, g.gnbN2Ip, g.amfN2Port, g.gnbN2Port)
 	if err != nil {
 		return err
 	}
-	g.logger.Debug("SCTP", fmt.Sprintf("AMF N2 Address: %v", amfAddr.String()))
-	g.logger.Debug("SCTP", fmt.Sprintf("GNB N2 Address: %v", gnbAddr.String()))
+	g.SctpLog.Tracef("AMF N2 Address: %v", amfAddr.String())
+	g.SctpLog.Tracef("GNB N2 Address: %v", gnbAddr.String())
 
 	conn, err := sctp.DialSCTP("sctp", gnbAddr, amfAddr)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error connecting to AMF: %v", err))
+		return fmt.Errorf("Error connecting to AMF: %v", err)
 	}
+	g.SctpLog.Debugln("Dail SCTP to AMF success")
 
 	info, err := conn.GetDefaultSentParam()
 	if err != nil {
 		return err
 	}
+	g.SctpLog.Tracef("N2 connection default sent param: %+v", info)
+
 	info.PPID = g.ngapPpid
 	if err := conn.SetDefaultSentParam(info); err != nil {
-		return errors.New(fmt.Sprintf("Error setting default sent param: %v", err))
+		return fmt.Errorf("Error setting default sent param: %v", err)
 	}
 
 	g.n2Conn = conn
 
-	g.logger.Info("GNB", fmt.Sprintf("Connected to AMF: %v", amfAddr.String()))
+	g.RanLog.Infof("Connected to AMF: %v", amfAddr.String())
 	return nil
 }
 
 func (g *Gnb) setupN2() error {
-	g.logger.Info("GNB", "Setting up N2")
+	g.RanLog.Infoln("Setting up N2")
 
 	request, err := getNgapSetupRequest(g.gnbId, g.gnbName, g.plmnId, g.tai, g.snssai)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error getting NGAP setup request: %v", err))
+		return fmt.Errorf("Error getting NGAP setup request: %v", err)
 	}
+	g.NgapLog.Tracef("NGAP setup request: %+v", request)
 
-	_, err = g.n2Conn.Write(request)
+	n, err := g.n2Conn.Write(request)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error sending NGAP setup request: %v", err))
+		return fmt.Errorf("Error sending NGAP setup request: %v", err)
 	}
+	g.NgapLog.Tracef("Sent %d bytes of NGAP setup request", n)
+	g.NgapLog.Debugln("Sent NGAP setup request to AMF")
 
-	response := make([]byte, 2048)
-	responseLen, err := g.n2Conn.Read(response)
+	responseRaw := make([]byte, 2048)
+	n, err = g.n2Conn.Read(responseRaw)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error reading NGAP setup response: %v", err))
+		return fmt.Errorf("Error reading NGAP setup response: %v", err)
 	}
+	g.NgapLog.Tracef("NGAP setup responseRaw: %+v", responseRaw[:n])
+	g.NgapLog.Debugln("Received NGAP setup response from AMF")
 
-	responsePdu, err := ngap.Decoder(response[:responseLen])
+	response, err := ngap.Decoder(responseRaw[:n])
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error decoding NGAP setup response: %v", err))
+		return fmt.Errorf("Error decoding NGAP setup response: %v", err)
+	}
+	g.NgapLog.Tracef("NGAP setup response: %+v", response)
+
+	if (response.Present != ngapType.NGAPPDUPresentSuccessfulOutcome) || (response.SuccessfulOutcome.ProcedureCode.Value != ngapType.ProcedureCodeNGSetup) {
+		return fmt.Errorf("Error NGAP setup response: %+v", response)
 	}
 
-	if (responsePdu.Present != ngapType.NGAPPDUPresentSuccessfulOutcome) || (responsePdu.SuccessfulOutcome.ProcedureCode.Value != ngapType.ProcedureCodeNGSetup) {
-		return errors.New(fmt.Sprintf("Error NGAP setup response: %+v", responsePdu))
-	}
-
-	g.logger.Info("NGAP", "============= gNB Info =============")
+	g.NgapLog.Infoln("============= gNB Info =============")
 
 	gnbId := util.BytesToHexString(g.gnbId)
-	g.logger.Info("NGAP", fmt.Sprintf("gNB ID: %v, name: %s", gnbId, g.gnbName))
+	g.NgapLog.Infof("gNB ID: %v, name: %s", gnbId, g.gnbName)
 
 	plmnId := ngapConvert.PlmnIdToModels(g.plmnId)
-	g.logger.Info("NGAP", fmt.Sprintf("PLMN ID: %v", plmnId))
+	g.NgapLog.Infof("PLMN ID: %v", plmnId)
 
 	tai := ngapConvert.TaiToModels(g.tai)
-	g.logger.Info("NGAP", fmt.Sprintf("TAC: %v, broadcast PLMN ID: %v", tai.Tac, tai.PlmnId))
+	g.NgapLog.Infof("TAC: %v, broadcast PLMN ID: %v", tai.Tac, tai.PlmnId)
 
 	snssai := ngapConvert.SNssaiToModels(g.snssai)
-	g.logger.Info("NGAP", fmt.Sprintf("SST: %v, SD: %v", snssai.Sst, snssai.Sd))
+	g.NgapLog.Infof("SST: %v, SD: %v", snssai.Sst, snssai.Sd)
 
-	g.logger.Info("NGAP", "====================================")
+	g.NgapLog.Infoln("====================================")
 
-	g.logger.Info("GNB", "N2 setup complete")
+	g.RanLog.Infoln("N2 setup complete")
 	return nil
 }
 
 func (g *Gnb) setupN1(n1Conn net.Conn) error {
-	g.logger.Info("GNB", "Setting up N1")
+	g.RanLog.Infoln("Setting up N1")
 
 	// ue initialization
 	mobileIdentity5GS, err := g.processUeInitialization(n1Conn)
@@ -275,37 +288,37 @@ func (g *Gnb) setupN1(n1Conn net.Conn) error {
 		return err
 	}
 
-	g.logger.Info("GNB", fmt.Sprintf("UE %s N1 setup complete", mobileIdentity5GS.GetSUCI()))
+	g.RanLog.Infof("UE %s N1 setup complete", mobileIdentity5GS.GetSUCI())
 	return nil
 }
 
 func (g *Gnb) startRanListener() error {
-	g.logger.Info("GNB", "Starting RAN listener")
+	g.RanLog.Infoln("Starting RAN listener")
 	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", g.ranIp, g.ranPort))
 	if err != nil {
 		return err
 	}
 	g.ranListener = &listener
 
-	g.logger.Info("RAN", "============= RAN Info =============")
-	g.logger.Info("RAN", fmt.Sprintf("RAN access address: %s:%d", g.ranIp, g.ranPort))
-	g.logger.Info("RAN", "====================================")
+	g.RanLog.Infoln("============= RAN Info =============")
+	g.RanLog.Infof("RAN access address: %s:%d", g.ranIp, g.ranPort)
+	g.RanLog.Infoln("====================================")
 
-	g.logger.Info("GNB", "RAN listener started")
+	g.RanLog.Infoln("RAN listener started")
 	return nil
 }
 
 func (g *Gnb) handleRanConnection(ctx context.Context, conn net.Conn) {
 	defer func() {
 		if err := conn.Close(); err != nil {
-			g.logger.Error("RAN", fmt.Sprintf("Error closing UE connection: %v", err))
+			g.RanLog.Errorf("Error closing UE connection: %v", err)
 		}
-		g.logger.Info("RAN", fmt.Sprintf("Closed UE connection from: %v", conn.RemoteAddr()))
+		g.RanLog.Infof("Closed UE connection from: %v", conn.RemoteAddr())
 		g.activeConns.Delete(conn)
 	}()
 
 	if err := g.setupN1(conn); err != nil {
-		g.logger.Error("RAN", err.Error())
+		g.RanLog.Errorf("Error setting up N1: %v", err)
 		return
 	}
 
@@ -318,10 +331,10 @@ func (g *Gnb) handleRanConnection(ctx context.Context, conn net.Conn) {
 			_, err := conn.Read(buffer)
 			if err != nil {
 				if err == io.EOF {
-					g.logger.Debug("RAN", fmt.Sprintf("UE connection closed by client: %v", conn.RemoteAddr()))
+					g.RanLog.Debugf("UE connection closed by client: %v", conn.RemoteAddr())
 					return
 				}
-				g.logger.Error("RAN", fmt.Sprintf("Error reading from UE connection: %v", err))
+				g.RanLog.Errorf("Error reading from UE connection: %v", err)
 				return
 			}
 		}
@@ -329,74 +342,88 @@ func (g *Gnb) handleRanConnection(ctx context.Context, conn net.Conn) {
 }
 
 func (g *Gnb) processUeInitialization(n1Conn net.Conn) (nasType.MobileIdentity5GS, error) {
-	g.logger.Info("RAN", "Processing UE initialization")
+	g.RanLog.Infoln("Processing UE initialization")
 
 	var mobileIdentity5GS nasType.MobileIdentity5GS
 
-	// receive ue registration request and send initial ue message to AMF
+	// receive ue registration request from UE and send to AMF
 	ueRegistrationRequest := make([]byte, 1024)
-	if _, err := n1Conn.Read(ueRegistrationRequest); err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error receive ue registration request from UE: %v", err))
+	n, err := n1Conn.Read(ueRegistrationRequest)
+	if err != nil {
+		return mobileIdentity5GS, fmt.Errorf("Error receive ue registration request from UE: %v", err)
 	}
+	g.NasLog.Tracef("Received %d bytes of UE registration request from UE", n)
+
 	nasMessage := nas.NewMessage()
 	if err := nasMessage.GmmMessageDecode(&ueRegistrationRequest); err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error decode ue registration request from UE: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error decode ue registration request from UE: %v", err)
 	}
 	mobileIdentity5GS = nasMessage.GmmMessage.RegistrationRequest.MobileIdentity5GS
-	g.logger.Debug("RAN", fmt.Sprintf("Receive UE %s registration request from UE", mobileIdentity5GS.GetSUCI()))
+	g.NasLog.Debugf("Receive UE %s registration request from UE", mobileIdentity5GS.GetSUCI())
 
 	ueInitialMessage, err := getInitialUeMessage(1, ueRegistrationRequest, g.plmnId, g.tai)
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error get initial ue message: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error get initial ue message: %v", err)
 	}
+	g.NgapLog.Tracef("Get initial UE message: %+v", ueInitialMessage)
 
-	if _, err := g.n2Conn.Write(ueInitialMessage); err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error send initial ue message to AMF: %v", err))
+	if n, err = g.n2Conn.Write(ueInitialMessage); err != nil {
+		return mobileIdentity5GS, fmt.Errorf("Error send initial ue message to AMF: %v", err)
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("Send initial UE message to AMF"))
+	g.NgapLog.Tracef("Sent %d bytes of initial UE message to AMF", n)
+	g.NgapLog.Debugln("Sent initial UE message to AMF")
 
 	// receive nas authentication request from AMF and send to UE
 	nasAuthenticationRequest := make([]byte, 1024)
-	n, err := g.n2Conn.Read(nasAuthenticationRequest)
+	n, err = g.n2Conn.Read(nasAuthenticationRequest)
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error receive initial ue response from AMF: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error receive initial ue response from AMF: %v", err)
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("Receive NAS Authentication Request from AMF"))
+	g.NgapLog.Tracef("Received %d bytes of NAS Authentication Request from AMF", n)
+	g.NgapLog.Debugln("Receive NAS Authentication Request from AMF")
 
-	if _, err := n1Conn.Write(nasAuthenticationRequest[:n]); err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error send nas authentication request to UE: %v", err))
+	if n, err = n1Conn.Write(nasAuthenticationRequest[:n]); err != nil {
+		return mobileIdentity5GS, fmt.Errorf("Error send nas authentication request to UE: %v", err)
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("Send NAS Authentication Request to UE"))
+	g.NasLog.Tracef("Sent %d bytes of NAS Authentication Request to UE", n)
+	g.NasLog.Debugln("Send NAS Authentication Request to UE")
 
 	// receive nas authentication response from UE and send to AMF
 	nasAuthenticationResponse := make([]byte, 1024)
 	n, err = n1Conn.Read(nasAuthenticationResponse)
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error receive nas authentication response from UE: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error receive nas authentication response from UE: %v", err)
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("Receive NAS Authentication Response from UE"))
+	g.NasLog.Tracef("Received %d bytes of NAS Authentication Response from UE", n)
+	g.NasLog.Debugln("Receive NAS Authentication Response from UE")
 
 	uplinkNasTransport, err := getUplinkNasTransport(1, 1, g.plmnId, g.tai, nasAuthenticationResponse[:n])
 	if err != nil {
 		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error get uplink nas transport: %v", err))
 	}
-	if _, err := g.n2Conn.Write(uplinkNasTransport); err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error send uplink nas transport to AMF: %v", err))
+	g.NgapLog.Tracef("Get uplink NAS transport: %+v", uplinkNasTransport)
+
+	n, err = g.n2Conn.Write(uplinkNasTransport)
+	if err != nil {
+		return mobileIdentity5GS, fmt.Errorf("Error send uplink nas transport to AMF: %v", err)
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("Send NAS Authentication Response to AMF"))
+	g.NgapLog.Tracef("Sent %d bytes of uplink NAS transport to AMF", n)
+	g.NgapLog.Debugln("Sent uplink NAS transport to AMF")
 
 	// receive nas security mode command message from AMF and send to UE
 	nasSecurityModeCommand := make([]byte, 1024)
 	n, err = g.n2Conn.Read(nasSecurityModeCommand)
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error receive nas security mode command from AMF: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error receive nas security mode command from AMF: %v", err)
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("Receive NAS Security Mode Command from AMF"))
+	g.NgapLog.Tracef("Received %d bytes of NAS Security Mode Command from AMF", n)
+	g.NgapLog.Debugf("Receive NAS Security Mode Command from AMF")
 
-	if _, err := n1Conn.Write(nasSecurityModeCommand[:n]); err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error send nas security mode command to UE: %v", err))
+	if n, err = n1Conn.Write(nasSecurityModeCommand[:n]); err != nil {
+		return mobileIdentity5GS, fmt.Errorf("Error send nas security mode command to UE: %v", err)
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("Send NAS Security Mode Command to UE"))
+	g.NasLog.Tracef("Sent %d bytes of NAS Security Mode Command to UE", n)
+	g.NasLog.Debugln("Send NAS Security Mode Command to UE")
 
 	// receive nas security mode complete message from UE and send to AMF
 	nasSecurityModeComplete := make([]byte, 1024)
@@ -404,16 +431,21 @@ func (g *Gnb) processUeInitialization(n1Conn net.Conn) (nasType.MobileIdentity5G
 	if err != nil {
 		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error receive nas security mode complete from UE: %v", err))
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("Receive NAS Security Mode Complete from UE"))
+	g.NasLog.Tracef("Received %d bytes of NAS Security Mode Complete from UE", n)
+	g.NasLog.Debugln("Receive NAS Security Mode Complete from UE")
 
 	uplinkNasTransport, err = getUplinkNasTransport(1, 1, g.plmnId, g.tai, nasSecurityModeComplete[:n])
 	if err != nil {
 		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error get uplink nas transport: %v", err))
 	}
-	if _, err := g.n2Conn.Write(uplinkNasTransport); err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error send uplink nas transport to AMF: %v", err))
+	g.NgapLog.Tracef("Get uplink NAS transport: %+v", uplinkNasTransport)
+
+	n, err = g.n2Conn.Write(uplinkNasTransport)
+	if err != nil {
+		return mobileIdentity5GS, fmt.Errorf("Error send uplink nas transport to AMF: %v", err)
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("Send NAS Security Mode Complete to AMF"))
+	g.NgapLog.Tracef("Sent %d bytes of uplink NAS transport to AMF", n)
+	g.NgapLog.Debugln("Sent uplink NAS transport to AMF")
 
 	// receive ngap initial context setup request from AMF
 	ngapInitialContextSetupRequestRaw := make([]byte, 1024)
@@ -421,6 +453,8 @@ func (g *Gnb) processUeInitialization(n1Conn net.Conn) (nasType.MobileIdentity5G
 	if err != nil {
 		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error receive ngap initial context setup request from AMF: %v", err))
 	}
+	g.NgapLog.Tracef("Received %d bytes of NGAP Initial Context Setup Request from AMF", n)
+	g.NgapLog.Debugln("Receive NGAP Initial Context Setup Request from AMF")
 
 	ngapInitialContextSetupRequest, err := ngap.Decoder(ngapInitialContextSetupRequestRaw[:n])
 	if err != nil {
@@ -429,17 +463,22 @@ func (g *Gnb) processUeInitialization(n1Conn net.Conn) (nasType.MobileIdentity5G
 	if ngapInitialContextSetupRequest.Present != ngapType.NGAPPDUPresentInitiatingMessage || ngapInitialContextSetupRequest.InitiatingMessage.ProcedureCode.Value != ngapType.ProcedureCodeInitialContextSetup {
 		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error ngap initial context setup request: no initial context setup request"))
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("Receive NGAP Initial Context Setup Request from AMF"))
+	g.NgapLog.Tracef("NGAP Initial Context Setup Request: %+v", ngapInitialContextSetupRequest)
+	g.NgapLog.Debugln("Receive NGAP Initial Context Setup Request from AMF")
 
 	// send ngap initial context setup response to AMF
 	ngapInitialContextSetupResponse, err := getNgapInitialContextSetupResponse(1, 1)
 	if err != nil {
 		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error get ngap initial context setup response: %v", err))
 	}
-	if _, err := g.n2Conn.Write(ngapInitialContextSetupResponse); err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error send ngap initial context setup response to AMF: %v", err))
+	g.NgapLog.Tracef("Get NGAP Initial Context Setup Response: %+v", ngapInitialContextSetupResponse)
+
+	n, err = g.n2Conn.Write(ngapInitialContextSetupResponse)
+	if err != nil {
+		return mobileIdentity5GS, fmt.Errorf("Error send ngap initial context setup response to AMF: %v", err)
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("Send NGAP Initial Context Setup Response to AMF"))
+	g.NgapLog.Tracef("Sent %d bytes of NGAP Initial Context Setup Response to AMF", n)
+	g.NgapLog.Debugln("Send NGAP Initial Context Setup Response to AMF")
 
 	// receive nas registration complete message from UE and send to AMF
 	nasRegistrationComplete := make([]byte, 1024)
@@ -447,16 +486,21 @@ func (g *Gnb) processUeInitialization(n1Conn net.Conn) (nasType.MobileIdentity5G
 	if err != nil {
 		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error receive nas registration complete from UE: %v", err))
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("Receive NAS Registration Complete from UE"))
+	g.NasLog.Tracef("Received %d bytes of NAS Registration Complete from UE", n)
+	g.NasLog.Debugln("Receive NAS Registration Complete from UE")
 
 	uplinkNasTransport, err = getUplinkNasTransport(1, 1, g.plmnId, g.tai, nasRegistrationComplete[:n])
 	if err != nil {
 		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error get uplink nas transport: %v", err))
 	}
-	if _, err := g.n2Conn.Write(uplinkNasTransport); err != nil {
+	g.NgapLog.Tracef("Get uplink NAS transport: %+v", uplinkNasTransport)
+
+	n, err = g.n2Conn.Write(uplinkNasTransport)
+	if err != nil {
 		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error send uplink nas transport to AMF: %v", err))
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("Send NAS Registration Complete to AMF"))
+	g.NgapLog.Tracef("Sent %d bytes of uplink NAS transport to AMF", n)
+	g.NgapLog.Debugln("Send NAS Registration Complete to AMF")
 
 	// receive ue configuration update command message from AMF
 	ueConfigurationUpdateCommandRaw := make([]byte, 1024)
@@ -464,6 +508,9 @@ func (g *Gnb) processUeInitialization(n1Conn net.Conn) (nasType.MobileIdentity5G
 	if err != nil {
 		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error receive ue configuration update command from AMF: %v", err))
 	}
+	g.NgapLog.Tracef("Received %d bytes of UE Configuration Update Command from AMF", n)
+	g.NgapLog.Debugln("Receive UE Configuration Update Command from AMF")
+
 	ueConfigurationUpdateCommand, err := ngap.Decoder(ueConfigurationUpdateCommandRaw[:n])
 	if err != nil {
 		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error decode ue configuration update command from AMF: %v", err))
@@ -471,8 +518,9 @@ func (g *Gnb) processUeInitialization(n1Conn net.Conn) (nasType.MobileIdentity5G
 	if ueConfigurationUpdateCommand.Present != ngapType.NGAPPDUPresentInitiatingMessage || ueConfigurationUpdateCommand.InitiatingMessage.ProcedureCode.Value != ngapType.ProcedureCodeDownlinkNASTransport {
 		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error ue configuration update command: no ue configuration update command"))
 	}
-	g.logger.Debug("RAN", fmt.Sprintf("Receive UE Configuration Update Command from AMF"))
+	g.NgapLog.Tracef("UE Configuration Update Command: %+v", ueConfigurationUpdateCommand)
+	g.NgapLog.Debugln("Receive UE Configuration Update Command from AMF")
 
-	g.logger.Info("RAN", fmt.Sprintf("UE %s initialized", mobileIdentity5GS.GetSUCI()))
+	g.RanLog.Infof("UE %s initialized", mobileIdentity5GS.GetSUCI())
 	return mobileIdentity5GS, nil
 }

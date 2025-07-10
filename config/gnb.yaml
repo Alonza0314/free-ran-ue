@@ -25,4 +25,4 @@ gnb:
     sd: "010203"
 
 logger:
-  level: "debug" # error, warn, info, debug
+  level: "debug" # error, warn, info, debug, trace

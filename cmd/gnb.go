@@ -10,6 +10,7 @@ import (
 	"github.com/Alonza0314/free-ran-ue/logger"
 	"github.com/Alonza0314/free-ran-ue/model"
 	"github.com/Alonza0314/free-ran-ue/util"
+	loggergoUtil "github.com/Alonza0314/logger-go/v2/util"
 	"github.com/spf13/cobra"
 )
 
@@ -40,12 +41,9 @@ func gnbFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	logger, err := logger.NewLogger(gnbConfig.Logger.Level)
-	if err != nil {
-		panic(err)
-	}
+	logger := logger.NewGnbLogger(loggergoUtil.LogLevelString(gnbConfig.Logger.Level), "", true)
 
-	gnb := gnb.NewGnb(&gnbConfig, logger)
+	gnb := gnb.NewGnb(&gnbConfig, &logger)
 	if gnb == nil {
 		return
 	}
