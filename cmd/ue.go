@@ -9,6 +9,7 @@ import (
 	"github.com/Alonza0314/free-ran-ue/model"
 	"github.com/Alonza0314/free-ran-ue/ue"
 	"github.com/Alonza0314/free-ran-ue/util"
+	loggergoUtil "github.com/Alonza0314/logger-go/v2/util"
 	"github.com/spf13/cobra"
 )
 
@@ -39,12 +40,9 @@ func ueFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	logger, err := logger.NewLogger(ueConfig.Logger.Level)
-	if err != nil {
-		panic(err)
-	}
+	logger := logger.NewUeLogger(loggergoUtil.LogLevelString(ueConfig.Logger.Level), "", true)
 
-	ue := ue.NewUe(&ueConfig, logger)
+	ue := ue.NewUe(&ueConfig, &logger)
 	if ue == nil {
 		return
 	}

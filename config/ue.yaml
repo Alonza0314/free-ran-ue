@@ -27,4 +27,4 @@ ue:
   accessType: "3GPP_ACCESS" # 3GPP_ACCESS, NON_3GPP_ACCESS
 
 logger:
-  level: "debug" # error, warn, info, debug
+  level: "debug" # error, warn, info, debug, trace
