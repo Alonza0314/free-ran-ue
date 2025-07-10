@@ -199,8 +199,8 @@ func (g *Gnb) connectToAmf() error {
 	if err != nil {
 		return err
 	}
-	g.SctpLog.Tracef("AMF N2 Address: %v", amfAddr.String())
-	g.SctpLog.Tracef("GNB N2 Address: %v", gnbAddr.String())
+	g.SctpLog.Tracef("AMF N2 address: %v", amfAddr.String())
+	g.SctpLog.Tracef("GNB N2 address: %v", gnbAddr.String())
 
 	conn, err := sctp.DialSCTP("sctp", gnbAddr, amfAddr)
 	if err != nil {
