@@ -1,7 +1,6 @@
 package gnb
 
 import (
-	"errors"
 	"fmt"
 	"net"
 
@@ -13,7 +12,7 @@ func getAmfAndGnbSctpN2Addr(amfN2Ip, gnbN2Ip string, amfN2Port, gnbN2Port int) (
 	gnbIps := make([]net.IPAddr, 0)
 
 	if ip, err := net.ResolveIPAddr("ip", amfN2Ip); err != nil {
-		return nil, nil, errors.New(fmt.Sprintf("Error resolving AMF N2 IP address '%s': '%v'", amfN2Ip, err))
+		return nil, nil, fmt.Errorf("Error resolving AMF N2 IP address '%s': '%v'", amfN2Ip, err)
 	} else {
 		amfIps = append(amfIps, *ip)
 	}
@@ -23,7 +22,7 @@ func getAmfAndGnbSctpN2Addr(amfN2Ip, gnbN2Ip string, amfN2Port, gnbN2Port int) (
 	}
 
 	if ip, err := net.ResolveIPAddr("ip", gnbN2Ip); err != nil {
-		return nil, nil, errors.New(fmt.Sprintf("Error resolving GNB N2 IP address '%s': '%v'", gnbN2Ip, err))
+		return nil, nil, fmt.Errorf("Error resolving GNB N2 IP address '%s': '%v'", gnbN2Ip, err)
 	} else {
 		gnbIps = append(gnbIps, *ip)
 	}

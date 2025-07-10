@@ -1,7 +1,6 @@
 package ue
 
 import (
-	"errors"
 	"fmt"
 	"net"
 
@@ -182,25 +181,25 @@ func (u *Ue) processUeRegistration() error {
 	nasAuthenticationRequestRaw := make([]byte, 1024)
 	n, err = u.ranConn.Read(nasAuthenticationRequestRaw)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error read nas authentication request: %+v", err))
+		return fmt.Errorf("Error read nas authentication request: %+v", err)
 	}
 	u.NasLog.Tracef("Received %d bytes of NAS Authentication Request from RAN", n)
 
 	nasAuthenticationRequest, err := ngap.Decoder(nasAuthenticationRequestRaw[:n])
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error decode nas authentication request: %+v", err))
+		return fmt.Errorf("Error decode nas authentication request: %+v", err)
 	}
 	if nasAuthenticationRequest.Present != ngapType.NGAPPDUPresentInitiatingMessage || nasAuthenticationRequest.InitiatingMessage.ProcedureCode.Value != ngapType.ProcedureCodeDownlinkNASTransport {
-		return errors.New(fmt.Sprintf("Error NGAP nas authentication request: %+v", nasAuthenticationRequest))
+		return fmt.Errorf("Error NGAP nas authentication request: %+v", nasAuthenticationRequest)
 	}
 	u.NasLog.Tracef("NGAP nas authentication request: %+v", nasAuthenticationRequest)
 
 	nasPdu, err := getNasPdu(u, nasAuthenticationRequest.InitiatingMessage.Value.DownlinkNASTransport)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error get nas pdu: %+v", err))
+		return fmt.Errorf("Error get nas pdu: %+v", err)
 	} else {
 		if nasPdu.GmmHeader.GetMessageType() != nas.MsgTypeAuthenticationRequest {
-			return errors.New(fmt.Sprintf("Error nas pdu message type: %+v, expected authenticatoin request", nasPdu))
+			return fmt.Errorf("Error nas pdu message type: %+v, expected authenticatoin request", nasPdu)
 		}
 		u.NasLog.Tracef("NAS authentication request: %+v", nasPdu)
 	}
@@ -210,7 +209,7 @@ func (u *Ue) processUeRegistration() error {
 	rand := nasPdu.AuthenticationRequest.GetRANDValue()
 	kAmf, kenc, kint, resStar, err := deriveResStarAndSetKey(fmt.Sprintf("supi-%s", u.supi), u.cipheringAlgorithm, u.integrityAlgorithm, u.authenticationSubscription.sequenceNumber, u.authenticationSubscription.authenticationManagementField, u.authenticationSubscription.encPermanentKey, u.authenticationSubscription.encOpcKey, rand[:], "5G:mnc093.mcc208.3gppnetwork.org")
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error derive res star and set key: %+v", err))
+		return fmt.Errorf("Error derive res star and set key: %+v", err)
 	} else {
 		u.kAmf = kAmf
 		copy(u.kNasEnc[:], kenc[16:32])
@@ -223,13 +222,13 @@ func (u *Ue) processUeRegistration() error {
 
 	authenticationResponse, err := getAuthenticationResponse(resStar)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error get authentication response: %+v", err))
+		return fmt.Errorf("Error get authentication response: %+v", err)
 	}
 	u.NasLog.Tracef("Authentication response: %+v", authenticationResponse)
 
 	n, err = u.ranConn.Write(authenticationResponse)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error send authentication response: %+v", err))
+		return fmt.Errorf("Error send authentication response: %+v", err)
 	}
 	u.NasLog.Tracef("Sent %d bytes of Authentication Response to RAN", n)
 	u.NasLog.Debugln("Send Authentication Response to RAN")
@@ -238,22 +237,22 @@ func (u *Ue) processUeRegistration() error {
 	nasSecurityCommandRaw := make([]byte, 1024)
 	n, err = u.ranConn.Read(nasSecurityCommandRaw)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error read nas security command: %+v", err))
+		return fmt.Errorf("Error read nas security command: %+v", err)
 	}
 	u.NasLog.Tracef("Received %d bytes of NAS Security Mode Command from RAN", n)
 
 	nasSecurityCommand, err := ngap.Decoder(nasSecurityCommandRaw[:n])
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error decode nas security command: %+v", err))
+		return fmt.Errorf("Error decode nas security command: %+v", err)
 	}
 	u.NasLog.Tracef("NGAP nas security command: %+v", nasSecurityCommand)
 
 	nasPdu, err = getNasPdu(u, nasSecurityCommand.InitiatingMessage.Value.DownlinkNASTransport)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error get nas pdu: %+v", err))
+		return fmt.Errorf("Error get nas pdu: %+v", err)
 	} else {
 		if nasPdu.GmmHeader.GetMessageType() != nas.MsgTypeSecurityModeCommand {
-			return errors.New(fmt.Sprintf("Error nas pdu message type: %+v, expected security mode command", nasPdu))
+			return fmt.Errorf("Error nas pdu message type: %+v, expected security mode command", nasPdu)
 		}
 		u.NasLog.Tracef("NAS security mode command: %+v", nasPdu)
 	}
@@ -262,25 +261,25 @@ func (u *Ue) processUeRegistration() error {
 	// send nas security mode complete message
 	registrationRequestWith5Gmm, err := getUeRegistrationRequest(nasMessage.RegistrationType5GSInitialRegistration, &mobileIdentity5GS, nil, &ueSecurityCapability, u.get5GmmCapability(), nil, nil)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error get ue registration request with 5GMM: %+v", err))
+		return fmt.Errorf("Error get ue registration request with 5GMM: %+v", err)
 	}
 	u.NasLog.Tracef("Registration request with 5GMM: %+v", registrationRequestWith5Gmm)
 
 	nasSecurityModeCompleteMessage, err := getNasSecurityModeCompleteMessage(registrationRequestWith5Gmm)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error get nas security mode complete message: %+v", err))
+		return fmt.Errorf("Error get nas security mode complete message: %+v", err)
 	}
 	u.NasLog.Tracef("NAS security mode complete message: %+v", nasSecurityModeCompleteMessage)
 
 	encodedNasSecurityModeCompleteMessage, err := encodeNasPduWithSecurity(nasSecurityModeCompleteMessage, nas.SecurityHeaderTypeIntegrityProtectedAndCipheredWithNew5gNasSecurityContext, u, true, true)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error encode nas security mode complete message: %+v", err))
+		return fmt.Errorf("Error encode nas security mode complete message: %+v", err)
 	}
 	u.NasLog.Tracef("Encoded NAS security mode complete message: %+v", encodedNasSecurityModeCompleteMessage)
 
 	n, err = u.ranConn.Write(encodedNasSecurityModeCompleteMessage)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error send nas security mode complete message: %+v", err))
+		return fmt.Errorf("Error send nas security mode complete message: %+v", err)
 	}
 	u.NasLog.Tracef("Sent %d bytes of NAS Security Mode Complete Message to RAN", n)
 	u.NasLog.Debugln("Send NAS Security Mode Complete Message to RAN")
@@ -288,19 +287,19 @@ func (u *Ue) processUeRegistration() error {
 	// send nas registration complete message to RAN
 	nasRegistrationCompleteMessage, err := getNasRegistrationCompleteMessage(nil)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error get nas registration complete message: %+v", err))
+		return fmt.Errorf("Error get nas registration complete message: %+v", err)
 	}
 	u.NasLog.Tracef("NAS registration complete message: %+v", nasRegistrationCompleteMessage)
 
 	encodedNasRegistrationCompleteMessage, err := encodeNasPduWithSecurity(nasRegistrationCompleteMessage, nas.SecurityHeaderTypeIntegrityProtectedAndCiphered, u, true, false)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error encode nas registration complete message: %+v", err))
+		return fmt.Errorf("Error encode nas registration complete message: %+v", err)
 	}
 	u.NasLog.Tracef("Encoded NAS registration complete message: %+v", encodedNasRegistrationCompleteMessage)
 
 	n, err = u.ranConn.Write(encodedNasRegistrationCompleteMessage)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error send nas registration complete message: %+v", err))
+		return fmt.Errorf("Error send nas registration complete message: %+v", err)
 	}
 	u.NasLog.Tracef("Sent %d bytes of NAS Registration Complete Message to RAN", n)
 	u.NasLog.Debugln("Send NAS Registration Complete Message to RAN")

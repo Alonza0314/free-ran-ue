@@ -2,7 +2,6 @@ package ue
 
 import (
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"regexp"
 
@@ -23,17 +22,17 @@ func deriveKAmf(supi string, key []byte, snName string, SQN, AK []byte) ([]byte,
 	P1 := SQNxorAK
 	Kausf, err := ueauth.GetKDFValue(key, FC, P0, ueauth.KDFLen(P0), P1, ueauth.KDFLen(P1))
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("GetKDFValue error: %+v", err))
+		return nil, fmt.Errorf("GetKDFValue error: %+v", err)
 	}
 	P0 = []byte(snName)
 	Kseaf, err := ueauth.GetKDFValue(Kausf, ueauth.FC_FOR_KSEAF_DERIVATION, P0, ueauth.KDFLen(P0))
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("GetKDFValue error: %+v", err))
+		return nil, fmt.Errorf("GetKDFValue error: %+v", err)
 	}
 
 	supiRegexp, err := regexp.Compile("(?:imsi|supi)-([0-9]{5,15})")
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("regexp Compile error: %+v", err))
+		return nil, fmt.Errorf("regexp Compile error: %+v", err)
 	}
 	groups := supiRegexp.FindStringSubmatch(supi)
 
@@ -54,7 +53,7 @@ func deriveAlgorithmKey(kAmf []byte, cipheringAlgorithm, integrityAlgorithm uint
 
 	kenc, err := ueauth.GetKDFValue(kAmf, ueauth.FC_FOR_ALGORITHM_KEY_DERIVATION, P0, L0, P1, L1)
 	if err != nil {
-		return nil, nil, errors.New(fmt.Sprintf("GetKDFValue error: %+v", err))
+		return nil, nil, fmt.Errorf("GetKDFValue error: %+v", err)
 	}
 
 	// Integrity Key
@@ -65,7 +64,7 @@ func deriveAlgorithmKey(kAmf []byte, cipheringAlgorithm, integrityAlgorithm uint
 
 	kint, err := ueauth.GetKDFValue(kAmf, ueauth.FC_FOR_ALGORITHM_KEY_DERIVATION, P0, L0, P1, L1)
 	if err != nil {
-		return nil, nil, errors.New(fmt.Sprintf("GetKDFValue error: %+v", err))
+		return nil, nil, fmt.Errorf("GetKDFValue error: %+v", err)
 	}
 
 	return kenc, kint, nil
@@ -74,22 +73,22 @@ func deriveAlgorithmKey(kAmf []byte, cipheringAlgorithm, integrityAlgorithm uint
 func deriveResStarAndSetKey(supi string, cipheringAlgorithm, integrityAlgorithm uint8, sqn, amf, encPermanentKey, encOpcKey string, rand []byte, snName string) ([]byte, []byte, []byte, []byte, error) {
 	sqnHex, err := hex.DecodeString(sqn)
 	if err != nil {
-		return nil, nil, nil, nil, errors.New(fmt.Sprintf("Error decode sqn: %v", err))
+		return nil, nil, nil, nil, fmt.Errorf("Error decode sqn: %v", err)
 	}
 
 	amfHex, err := hex.DecodeString(amf)
 	if err != nil {
-		return nil, nil, nil, nil, errors.New(fmt.Sprintf("Error decode amf: %v", err))
+		return nil, nil, nil, nil, fmt.Errorf("Error decode amf: %v", err)
 	}
 
 	kHex, err := hex.DecodeString(encPermanentKey)
 	if err != nil {
-		return nil, nil, nil, nil, errors.New(fmt.Sprintf("Error decode encPermanentKey: %v", err))
+		return nil, nil, nil, nil, fmt.Errorf("Error decode encPermanentKey: %v", err)
 	}
 
 	opcHex, err := hex.DecodeString(encOpcKey)
 	if err != nil {
-		return nil, nil, nil, nil, errors.New(fmt.Sprintf("Error decode encOpcKey: %v", err))
+		return nil, nil, nil, nil, fmt.Errorf("Error decode encOpcKey: %v", err)
 	}
 
 	macA, macS := make([]byte, 8), make([]byte, 8)
@@ -99,12 +98,12 @@ func deriveResStarAndSetKey(supi string, cipheringAlgorithm, integrityAlgorithm 
 
 	// generate macA and macS
 	if err := milenage.F1(opcHex, kHex, rand, sqnHex, amfHex, macA, macS); err != nil {
-		return nil, nil, nil, nil, errors.New(fmt.Sprintf("Error F1: %v", err))
+		return nil, nil, nil, nil, fmt.Errorf("Error F1: %v", err)
 	}
 
 	//generate res, ck, ik, ak, akstar
 	if err := milenage.F2345(opcHex, kHex, rand, res, ck, ik, ak, akStar); err != nil {
-		return nil, nil, nil, nil, errors.New(fmt.Sprintf("Error F2345: %v", err))
+		return nil, nil, nil, nil, fmt.Errorf("Error F2345: %v", err)
 	}
 
 	// derive RES*
@@ -116,15 +115,15 @@ func deriveResStarAndSetKey(supi string, cipheringAlgorithm, integrityAlgorithm 
 
 	kAmf, err := deriveKAmf(supi, key, snName, sqnHex, ak)
 	if err != nil {
-		return nil, nil, nil, nil, errors.New(fmt.Sprintf("Error deriveKAmf: %v", err))
+		return nil, nil, nil, nil, fmt.Errorf("Error deriveKAmf: %v", err)
 	}
 	kenc, kint, err := deriveAlgorithmKey(kAmf, cipheringAlgorithm, integrityAlgorithm)
 	if err != nil {
-		return nil, nil, nil, nil, errors.New(fmt.Sprintf("Error deriveAlgorithmKey: %v", err))
+		return nil, nil, nil, nil, fmt.Errorf("Error deriveAlgorithmKey: %v", err)
 	}
 	kdfVal_for_resStar, err := ueauth.GetKDFValue(key, FC, P0, ueauth.KDFLen(P0), P1, ueauth.KDFLen(P1), P2, ueauth.KDFLen(P2))
 	if err != nil {
-		return nil, nil, nil, nil, errors.New(fmt.Sprintf("Error GetKDFValue: %v", err))
+		return nil, nil, nil, nil, fmt.Errorf("Error GetKDFValue: %v", err)
 	}
 	return kAmf, kenc, kint, kdfVal_for_resStar[len(kdfVal_for_resStar)/2:], nil
 }

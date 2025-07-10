@@ -247,13 +247,13 @@ func (g *Gnb) setupN2() error {
 		return fmt.Errorf("Error reading NGAP setup response: %v", err)
 	}
 	g.NgapLog.Tracef("NGAP setup responseRaw: %+v", responseRaw[:n])
-	g.NgapLog.Debugln("Received NGAP setup response from AMF")
 
 	response, err := ngap.Decoder(responseRaw[:n])
 	if err != nil {
 		return fmt.Errorf("Error decoding NGAP setup response: %v", err)
 	}
 	g.NgapLog.Tracef("NGAP setup response: %+v", response)
+	g.NgapLog.Debugln("Received NGAP setup response from AMF")
 
 	if (response.Present != ngapType.NGAPPDUPresentSuccessfulOutcome) || (response.SuccessfulOutcome.ProcedureCode.Value != ngapType.ProcedureCodeNGSetup) {
 		return fmt.Errorf("Error NGAP setup response: %+v", response)
@@ -399,7 +399,7 @@ func (g *Gnb) processUeInitialization(n1Conn net.Conn) (nasType.MobileIdentity5G
 
 	uplinkNasTransport, err := getUplinkNasTransport(1, 1, g.plmnId, g.tai, nasAuthenticationResponse[:n])
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error get uplink nas transport: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error get uplink nas transport: %v", err)
 	}
 	g.NgapLog.Tracef("Get uplink NAS transport: %+v", uplinkNasTransport)
 
@@ -429,14 +429,14 @@ func (g *Gnb) processUeInitialization(n1Conn net.Conn) (nasType.MobileIdentity5G
 	nasSecurityModeComplete := make([]byte, 1024)
 	n, err = n1Conn.Read(nasSecurityModeComplete)
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error receive nas security mode complete from UE: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error receive nas security mode complete from UE: %v", err)
 	}
 	g.NasLog.Tracef("Received %d bytes of NAS Security Mode Complete from UE", n)
 	g.NasLog.Debugln("Receive NAS Security Mode Complete from UE")
 
 	uplinkNasTransport, err = getUplinkNasTransport(1, 1, g.plmnId, g.tai, nasSecurityModeComplete[:n])
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error get uplink nas transport: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error get uplink nas transport: %v", err)
 	}
 	g.NgapLog.Tracef("Get uplink NAS transport: %+v", uplinkNasTransport)
 
@@ -451,17 +451,16 @@ func (g *Gnb) processUeInitialization(n1Conn net.Conn) (nasType.MobileIdentity5G
 	ngapInitialContextSetupRequestRaw := make([]byte, 1024)
 	n, err = g.n2Conn.Read(ngapInitialContextSetupRequestRaw)
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error receive ngap initial context setup request from AMF: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error receive ngap initial context setup request from AMF: %v", err)
 	}
 	g.NgapLog.Tracef("Received %d bytes of NGAP Initial Context Setup Request from AMF", n)
-	g.NgapLog.Debugln("Receive NGAP Initial Context Setup Request from AMF")
 
 	ngapInitialContextSetupRequest, err := ngap.Decoder(ngapInitialContextSetupRequestRaw[:n])
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error decode ngap initial context setup request from AMF: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error decode ngap initial context setup request from AMF: %v", err)
 	}
 	if ngapInitialContextSetupRequest.Present != ngapType.NGAPPDUPresentInitiatingMessage || ngapInitialContextSetupRequest.InitiatingMessage.ProcedureCode.Value != ngapType.ProcedureCodeInitialContextSetup {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error ngap initial context setup request: no initial context setup request"))
+		return mobileIdentity5GS, fmt.Errorf("Error ngap initial context setup request: no initial context setup request")
 	}
 	g.NgapLog.Tracef("NGAP Initial Context Setup Request: %+v", ngapInitialContextSetupRequest)
 	g.NgapLog.Debugln("Receive NGAP Initial Context Setup Request from AMF")
@@ -469,7 +468,7 @@ func (g *Gnb) processUeInitialization(n1Conn net.Conn) (nasType.MobileIdentity5G
 	// send ngap initial context setup response to AMF
 	ngapInitialContextSetupResponse, err := getNgapInitialContextSetupResponse(1, 1)
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error get ngap initial context setup response: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error get ngap initial context setup response: %v", err)
 	}
 	g.NgapLog.Tracef("Get NGAP Initial Context Setup Response: %+v", ngapInitialContextSetupResponse)
 
@@ -484,20 +483,20 @@ func (g *Gnb) processUeInitialization(n1Conn net.Conn) (nasType.MobileIdentity5G
 	nasRegistrationComplete := make([]byte, 1024)
 	n, err = n1Conn.Read(nasRegistrationComplete)
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error receive nas registration complete from UE: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error receive nas registration complete from UE: %v", err)
 	}
 	g.NasLog.Tracef("Received %d bytes of NAS Registration Complete from UE", n)
 	g.NasLog.Debugln("Receive NAS Registration Complete from UE")
 
 	uplinkNasTransport, err = getUplinkNasTransport(1, 1, g.plmnId, g.tai, nasRegistrationComplete[:n])
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error get uplink nas transport: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error get uplink nas transport: %v", err)
 	}
 	g.NgapLog.Tracef("Get uplink NAS transport: %+v", uplinkNasTransport)
 
 	n, err = g.n2Conn.Write(uplinkNasTransport)
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error send uplink nas transport to AMF: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error send uplink nas transport to AMF: %v", err)
 	}
 	g.NgapLog.Tracef("Sent %d bytes of uplink NAS transport to AMF", n)
 	g.NgapLog.Debugln("Send NAS Registration Complete to AMF")
@@ -506,17 +505,16 @@ func (g *Gnb) processUeInitialization(n1Conn net.Conn) (nasType.MobileIdentity5G
 	ueConfigurationUpdateCommandRaw := make([]byte, 1024)
 	n, err = g.n2Conn.Read(ueConfigurationUpdateCommandRaw)
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error receive ue configuration update command from AMF: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error receive ue configuration update command from AMF: %v", err)
 	}
 	g.NgapLog.Tracef("Received %d bytes of UE Configuration Update Command from AMF", n)
-	g.NgapLog.Debugln("Receive UE Configuration Update Command from AMF")
 
 	ueConfigurationUpdateCommand, err := ngap.Decoder(ueConfigurationUpdateCommandRaw[:n])
 	if err != nil {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error decode ue configuration update command from AMF: %v", err))
+		return mobileIdentity5GS, fmt.Errorf("Error decode ue configuration update command from AMF: %v", err)
 	}
 	if ueConfigurationUpdateCommand.Present != ngapType.NGAPPDUPresentInitiatingMessage || ueConfigurationUpdateCommand.InitiatingMessage.ProcedureCode.Value != ngapType.ProcedureCodeDownlinkNASTransport {
-		return mobileIdentity5GS, errors.New(fmt.Sprintf("Error ue configuration update command: no ue configuration update command"))
+		return mobileIdentity5GS, fmt.Errorf("Error ue configuration update command: no ue configuration update command")
 	}
 	g.NgapLog.Tracef("UE Configuration Update Command: %+v", ueConfigurationUpdateCommand)
 	g.NgapLog.Debugln("Receive UE Configuration Update Command from AMF")
