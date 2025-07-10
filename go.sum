@@ -1,5 +1,5 @@
-github.com/Alonza0314/logger-go/v2 v2.0.2 h1:IJX9Fl47P7BphpYOg0yr5Kv4WaLFwR7UcaNG/wmp+Uk=
-github.com/Alonza0314/logger-go/v2 v2.0.2/go.mod h1:OXEncA2gNzwTKdAMg3kfe6MK12CljCCy3WL1bIjhpyk=
+github.com/Alonza0314/logger-go/v2 v2.0.3 h1:YoE3GpMiQ3e7NWLCWyNC3rDe+UjX+LO9dSUre9eWJ1E=
+github.com/Alonza0314/logger-go/v2 v2.0.3/go.mod h1:OXEncA2gNzwTKdAMg3kfe6MK12CljCCy3WL1bIjhpyk=
 github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1 h1:+JkXLHME8vLJafGhOH4aoV2Iu8bR55nU6iKMVfYVLjY=
 github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1/go.mod h1:nuudZmJhzWtx2212z+pkuy7B6nkBqa+xwNXZHL1j8cg=
 github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=

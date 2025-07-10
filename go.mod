@@ -5,7 +5,7 @@ go 1.24.2
 toolchain go1.24.5
 
 require (
-	github.com/Alonza0314/logger-go/v2 v2.0.2
+	github.com/Alonza0314/logger-go/v2 v2.0.3
 	github.com/free5gc/aper v1.0.6-0.20250102035630-3ddc831eed6a
 	github.com/free5gc/nas v1.1.5
 	github.com/free5gc/ngap v1.0.10
