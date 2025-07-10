@@ -1,13 +1,9 @@
 package gnb
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/free5gc/aper"
 	"github.com/free5gc/ngap"
 	"github.com/free5gc/ngap/ngapType"
-	"github.com/free5gc/sctp"
 )
 
 func buildNgapSetupRequest(gnbId []byte, gnbName string, plmnId ngapType.PLMNIdentity, tai ngapType.TAI, snssai ngapType.SNSSAI) ngapType.NGAPPDU {
@@ -105,31 +101,225 @@ func getNgapSetupRequest(gnbId []byte, gnbName string, plmnId ngapType.PLMNIdent
 	return ngap.Encoder(buildNgapSetupRequest(gnbId, gnbName, plmnId, tai, snssai))
 }
 
-func ngapSetup(n2Conn *sctp.SCTPConn, gnbId []byte, gnbName string, plmnId ngapType.PLMNIdentity, tai ngapType.TAI, snssai ngapType.SNSSAI) error {
-	request, err := getNgapSetupRequest(gnbId, gnbName, plmnId, tai, snssai)
-	if err != nil {
-		return errors.New(fmt.Sprintf("Error getting NGAP setup request: %v", err))
+func buildInitialUeMessage(ranUeNgapId int64, ueRegistrationRequest []byte, plmnId ngapType.PLMNIdentity, tai ngapType.TAI) ngapType.NGAPPDU {
+	pdu := ngapType.NGAPPDU{}
+
+	pdu.Present = ngapType.NGAPPDUPresentInitiatingMessage
+	pdu.InitiatingMessage = new(ngapType.InitiatingMessage)
+
+	initiatingMessage := pdu.InitiatingMessage
+	initiatingMessage.ProcedureCode.Value = ngapType.ProcedureCodeInitialUEMessage
+	initiatingMessage.Criticality.Value = ngapType.CriticalityPresentIgnore
+
+	initiatingMessage.Value.Present = ngapType.InitiatingMessagePresentInitialUEMessage
+	initiatingMessage.Value.InitialUEMessage = new(ngapType.InitialUEMessage)
+
+	initialUEMessage := initiatingMessage.Value.InitialUEMessage
+	initialUEMessageIEs := &initialUEMessage.ProtocolIEs
+
+	// RAN UE NGAP ID
+	ie := ngapType.InitialUEMessageIEs{}
+	ie.Id.Value = ngapType.ProtocolIEIDRANUENGAPID
+	ie.Criticality.Value = ngapType.CriticalityPresentReject
+	ie.Value.Present = ngapType.InitialUEMessageIEsPresentRANUENGAPID
+	ie.Value.RANUENGAPID = new(ngapType.RANUENGAPID)
+
+	rANUENGAPID := ie.Value.RANUENGAPID
+	rANUENGAPID.Value = ranUeNgapId
+
+	initialUEMessageIEs.List = append(initialUEMessageIEs.List, ie)
+
+	// NAS PDU
+	ie = ngapType.InitialUEMessageIEs{}
+	ie.Id.Value = ngapType.ProtocolIEIDNASPDU
+	ie.Criticality.Value = ngapType.CriticalityPresentReject
+	ie.Value.Present = ngapType.InitialUEMessageIEsPresentNASPDU
+	ie.Value.NASPDU = new(ngapType.NASPDU)
+
+	nasPDU := ie.Value.NASPDU
+	nasPDU.Value = ueRegistrationRequest
+
+	initialUEMessageIEs.List = append(initialUEMessageIEs.List, ie)
+
+	// User Location Information
+	ie = ngapType.InitialUEMessageIEs{}
+	ie.Id.Value = ngapType.ProtocolIEIDUserLocationInformation
+	ie.Criticality.Value = ngapType.CriticalityPresentReject
+	ie.Value.Present = ngapType.InitialUEMessageIEsPresentUserLocationInformation
+	ie.Value.UserLocationInformation = new(ngapType.UserLocationInformation)
+
+	userLocationInformation := ie.Value.UserLocationInformation
+	userLocationInformation.Present = ngapType.UserLocationInformationPresentUserLocationInformationNR
+	userLocationInformation.UserLocationInformationNR = new(ngapType.UserLocationInformationNR)
+
+	userLocationInformationNR := userLocationInformation.UserLocationInformationNR
+	userLocationInformationNR.NRCGI.PLMNIdentity.Value = plmnId.Value
+	userLocationInformationNR.NRCGI.NRCellIdentity.Value = aper.BitString{
+		Bytes:     []byte{0x00, 0x00, 0x00, 0x00, 0x10},
+		BitLength: 36,
+	}
+	userLocationInformationNR.TAI.PLMNIdentity.Value = tai.PLMNIdentity.Value
+	userLocationInformationNR.TAI.TAC.Value = tai.TAC.Value
+
+	initialUEMessageIEs.List = append(initialUEMessageIEs.List, ie)
+
+	// RRC Establishment Cause
+	ie = ngapType.InitialUEMessageIEs{}
+	ie.Id.Value = ngapType.ProtocolIEIDRRCEstablishmentCause
+	ie.Criticality.Value = ngapType.CriticalityPresentIgnore
+	ie.Value.Present = ngapType.InitialUEMessageIEsPresentRRCEstablishmentCause
+	ie.Value.RRCEstablishmentCause = new(ngapType.RRCEstablishmentCause)
+
+	rRCEstablishmentCause := ie.Value.RRCEstablishmentCause
+	rRCEstablishmentCause.Value = ngapType.RRCEstablishmentCausePresentMtAccess
+
+	initialUEMessageIEs.List = append(initialUEMessageIEs.List, ie)
+
+	// UE Context Request
+	ie = ngapType.InitialUEMessageIEs{}
+	ie.Id.Value = ngapType.ProtocolIEIDUEContextRequest
+	ie.Criticality.Value = ngapType.CriticalityPresentIgnore
+	ie.Value.Present = ngapType.InitialUEMessageIEsPresentUEContextRequest
+	ie.Value.UEContextRequest = new(ngapType.UEContextRequest)
+	ie.Value.UEContextRequest.Value = ngapType.UEContextRequestPresentRequested
+	initialUEMessageIEs.List = append(initialUEMessageIEs.List, ie)
+
+	return pdu
+}
+
+func getInitialUeMessage(ranUeNgapId int64, ueRegistrationRequest []byte, plmnId ngapType.PLMNIdentity, tai ngapType.TAI) ([]byte, error) {
+	initialUeMessage := buildInitialUeMessage(ranUeNgapId, ueRegistrationRequest, plmnId, tai)
+	return ngap.Encoder(initialUeMessage)
+}
+
+func buildUplinkNasTransport(amfUeNgapId int64, ranUeNgapId int64, plmnId ngapType.PLMNIdentity, tai ngapType.TAI, nasPdu []byte) ngapType.NGAPPDU {
+	pdu := ngapType.NGAPPDU{}
+
+	pdu.Present = ngapType.NGAPPDUPresentInitiatingMessage
+	pdu.InitiatingMessage = new(ngapType.InitiatingMessage)
+
+	initiatingMessage := pdu.InitiatingMessage
+	initiatingMessage.ProcedureCode.Value = ngapType.ProcedureCodeUplinkNASTransport
+	initiatingMessage.Criticality.Value = ngapType.CriticalityPresentIgnore
+
+	initiatingMessage.Value.Present = ngapType.InitiatingMessagePresentUplinkNASTransport
+	initiatingMessage.Value.UplinkNASTransport = new(ngapType.UplinkNASTransport)
+
+	uplinkNasTransport := initiatingMessage.Value.UplinkNASTransport
+	uplinkNasTransportIEs := &uplinkNasTransport.ProtocolIEs
+
+	// AMF UE NGAP ID
+	ie := ngapType.UplinkNASTransportIEs{}
+	ie.Id.Value = ngapType.ProtocolIEIDAMFUENGAPID
+	ie.Criticality.Value = ngapType.CriticalityPresentReject
+	ie.Value.Present = ngapType.UplinkNASTransportIEsPresentAMFUENGAPID
+	ie.Value.AMFUENGAPID = new(ngapType.AMFUENGAPID)
+
+	aMFUENGAPID := ie.Value.AMFUENGAPID
+	aMFUENGAPID.Value = amfUeNgapId
+
+	uplinkNasTransportIEs.List = append(uplinkNasTransportIEs.List, ie)
+
+	// RAN UE NGAP ID
+	ie = ngapType.UplinkNASTransportIEs{}
+	ie.Id.Value = ngapType.ProtocolIEIDRANUENGAPID
+	ie.Criticality.Value = ngapType.CriticalityPresentReject
+	ie.Value.Present = ngapType.UplinkNASTransportIEsPresentRANUENGAPID
+	ie.Value.RANUENGAPID = new(ngapType.RANUENGAPID)
+
+	rANUENGAPID := ie.Value.RANUENGAPID
+	rANUENGAPID.Value = ranUeNgapId
+
+	uplinkNasTransportIEs.List = append(uplinkNasTransportIEs.List, ie)
+
+	// NAS-PDU
+	ie = ngapType.UplinkNASTransportIEs{}
+	ie.Id.Value = ngapType.ProtocolIEIDNASPDU
+	ie.Criticality.Value = ngapType.CriticalityPresentReject
+	ie.Value.Present = ngapType.UplinkNASTransportIEsPresentNASPDU
+	ie.Value.NASPDU = new(ngapType.NASPDU)
+
+	// TODO: complete NAS-PDU
+	nASPDU := ie.Value.NASPDU
+	nASPDU.Value = nasPdu
+
+	uplinkNasTransportIEs.List = append(uplinkNasTransportIEs.List, ie)
+
+	// User Location Information
+	ie = ngapType.UplinkNASTransportIEs{}
+	ie.Id.Value = ngapType.ProtocolIEIDUserLocationInformation
+	ie.Criticality.Value = ngapType.CriticalityPresentIgnore
+	ie.Value.Present = ngapType.UplinkNASTransportIEsPresentUserLocationInformation
+	ie.Value.UserLocationInformation = new(ngapType.UserLocationInformation)
+
+	userLocationInformation := ie.Value.UserLocationInformation
+	userLocationInformation.Present = ngapType.UserLocationInformationPresentUserLocationInformationNR
+	userLocationInformation.UserLocationInformationNR = new(ngapType.UserLocationInformationNR)
+
+	userLocationInformationNR := userLocationInformation.UserLocationInformationNR
+	userLocationInformationNR.NRCGI.PLMNIdentity.Value = plmnId.Value
+	userLocationInformationNR.NRCGI.NRCellIdentity.Value = aper.BitString{
+		Bytes:     []byte{0x00, 0x00, 0x00, 0x00, 0x10},
+		BitLength: 36,
 	}
 
-	_, err = n2Conn.Write(request)
-	if err != nil {
-		return errors.New(fmt.Sprintf("Error sending NGAP setup request: %v", err))
-	}
+	userLocationInformationNR.TAI.PLMNIdentity.Value = tai.PLMNIdentity.Value
+	userLocationInformationNR.TAI.TAC.Value = tai.TAC.Value
 
-	response := make([]byte, 2048)
-	responseLen, err := n2Conn.Read(response)
-	if err != nil {
-		return errors.New(fmt.Sprintf("Error reading NGAP setup response: %v", err))
-	}
+	uplinkNasTransportIEs.List = append(uplinkNasTransportIEs.List, ie)
 
-	responsePdu, err := ngap.Decoder(response[:responseLen])
-	if err != nil {
-		return errors.New(fmt.Sprintf("Error decoding NGAP setup response: %v", err))
-	}
+	return pdu
+}
 
-	if responsePdu.Present == ngapType.NGAPPDUPresentSuccessfulOutcome && responsePdu.SuccessfulOutcome.ProcedureCode.Value == ngapType.ProcedureCodeNGSetup {
-		return nil
-	}
+func getUplinkNasTransport(amfUeNgapId int64, ranUeNgapId int64, plmnId ngapType.PLMNIdentity, tai ngapType.TAI, nasPdu []byte) ([]byte, error) {
+	uplinkNasTransport := buildUplinkNasTransport(amfUeNgapId, ranUeNgapId, plmnId, tai, nasPdu)
+	return ngap.Encoder(uplinkNasTransport)
+}
 
-	return errors.New(fmt.Sprintf("Error NGAP setup response: %+v", responsePdu))
+func buildNgapInitialContextSetupResponse(amfUeNgapId, ranUeNgapId int64) ngapType.NGAPPDU {
+	pdu := ngapType.NGAPPDU{}
+
+	pdu.Present = ngapType.NGAPPDUPresentSuccessfulOutcome
+	pdu.SuccessfulOutcome = new(ngapType.SuccessfulOutcome)
+
+	successfulOutcome := pdu.SuccessfulOutcome
+	successfulOutcome.ProcedureCode.Value = ngapType.ProcedureCodeInitialContextSetup
+	successfulOutcome.Criticality.Value = ngapType.CriticalityPresentReject
+
+	successfulOutcome.Value.Present = ngapType.SuccessfulOutcomePresentInitialContextSetupResponse
+	successfulOutcome.Value.InitialContextSetupResponse = new(ngapType.InitialContextSetupResponse)
+
+	initialContextSetupResponse := successfulOutcome.Value.InitialContextSetupResponse
+	initialContextSetupResponseIEs := &initialContextSetupResponse.ProtocolIEs
+
+	// AMF UE NGAP ID
+	ie := ngapType.InitialContextSetupResponseIEs{}
+	ie.Id.Value = ngapType.ProtocolIEIDAMFUENGAPID
+	ie.Criticality.Value = ngapType.CriticalityPresentReject
+	ie.Value.Present = ngapType.InitialContextSetupResponseIEsPresentAMFUENGAPID
+	ie.Value.AMFUENGAPID = new(ngapType.AMFUENGAPID)
+
+	aMFUENGAPID := ie.Value.AMFUENGAPID
+	aMFUENGAPID.Value = amfUeNgapId
+
+	initialContextSetupResponseIEs.List = append(initialContextSetupResponseIEs.List, ie)
+
+	// RAN UE NGAP ID
+	ie = ngapType.InitialContextSetupResponseIEs{}
+	ie.Id.Value = ngapType.ProtocolIEIDRANUENGAPID
+	ie.Criticality.Value = ngapType.CriticalityPresentReject
+	ie.Value.Present = ngapType.InitialContextSetupResponseIEsPresentRANUENGAPID
+	ie.Value.RANUENGAPID = new(ngapType.RANUENGAPID)
+
+	rANUENGAPID := ie.Value.RANUENGAPID
+	rANUENGAPID.Value = ranUeNgapId
+
+	initialContextSetupResponseIEs.List = append(initialContextSetupResponseIEs.List, ie)
+
+	return pdu
+}
+
+func getNgapInitialContextSetupResponse(amfUeNgapId, ranUeNgapId int64) ([]byte, error) {
+	initialContextSetupResponse := buildNgapInitialContextSetupResponse(amfUeNgapId, ranUeNgapId)
+	return ngap.Encoder(initialContextSetupResponse)
 }

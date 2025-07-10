@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
@@ -48,7 +49,10 @@ func gnbFunc(cmd *cobra.Command, args []string) {
 	if gnb == nil {
 		return
 	}
-	if err := gnb.Start(); err != nil {
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	if err := gnb.Start(ctx); err != nil {
 		return
 	}
 	defer gnb.Stop()
@@ -56,4 +60,6 @@ func gnbFunc(cmd *cobra.Command, args []string) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	<-sigCh
+
+	cancel()
 }

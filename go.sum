@@ -1,5 +1,7 @@
 github.com/Alonza0314/logger-go v1.2.2 h1:krNIEfYVUoazGO7AZA7MRwLo+XLqKqCJK0dMHamfE4I=
 github.com/Alonza0314/logger-go v1.2.2/go.mod h1:T5gtiQQiuxpFmlFygDFvEfKfczGF4QTG0T8sKwcnQ/0=
+github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1 h1:+JkXLHME8vLJafGhOH4aoV2Iu8bR55nU6iKMVfYVLjY=
+github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1/go.mod h1:nuudZmJhzWtx2212z+pkuy7B6nkBqa+xwNXZHL1j8cg=
 github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -7,12 +9,16 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/free5gc/aper v1.0.6-0.20250102035630-3ddc831eed6a h1:PRapMdjqo96T7y8PHShUlirRDI0EaJNVrmdfQaHxOKY=
 github.com/free5gc/aper v1.0.6-0.20250102035630-3ddc831eed6a/go.mod h1:L4d0BJpHVOgiOC49aCz44mF0Vja3l+bcVSAs7i3CZ8s=
+github.com/free5gc/nas v1.1.5 h1:Nn+ykQHcc3nHzsufvm/MwQjZRZV9/woxnPeoAMjgjP4=
+github.com/free5gc/nas v1.1.5/go.mod h1:PjgawnhAVEMn/GRQw2FHkjRj0m2+9Bhbr1qrQPXCxwo=
 github.com/free5gc/ngap v1.0.10 h1:Fj0EcmG+7m3yPKVwmtBPwJupj/dBmPxTG2BNljDSJXQ=
 github.com/free5gc/ngap v1.0.10/go.mod h1:YB2lx46yopOOWi3dt/vEg198oHKUyQHo0qwenjdwhi4=
 github.com/free5gc/openapi v1.1.0 h1:bOTp6vKC2MxupEXD76qeUL1MppV/SmXnka09JQJADZ0=
 github.com/free5gc/openapi v1.1.0/go.mod h1:Q2vSmc1xpSE9Dy8rbNSWQwv7cFLHbZvKhq528vj6Wbg=
 github.com/free5gc/sctp v1.0.1 h1:g8WDO97r8B9ubkT5Hyk9b4I1fZUOii9Z39gQ2eRaASo=
 github.com/free5gc/sctp v1.0.1/go.mod h1:7QXfRWCmlkBGD0EIu3qL5o71bslfIakydz4h2QDZdjQ=
+github.com/free5gc/util v1.0.7-0.20240911054252-194b3b49aba9 h1:7mejUKjXHmfVL4LK2ns6ug/QNRuAuyVQhdDRuAXlb8k=
+github.com/free5gc/util v1.0.7-0.20240911054252-194b3b49aba9/go.mod h1:IHKIBd4OM9rwSJ0fG/hv6pXbVC+Eu4Lcaq++BWkfSsY=
 github.com/go-playground/assert v1.2.1 h1:ad06XqC+TOv0nJWnbULSlh3ehp5uLuQEojZY5Tq8RgI=
 github.com/go-playground/assert v1.2.1/go.mod h1:Lgy+k19nOB/wQG/fVSQ7rra5qYugmytMQqvQ2dgjWn8=
 github.com/go-playground/assert/v2 v2.2.0 h1:JvknZsQTYeFEAhQwI4qEt9cyV5ONwRHC+lYKSsYSR8s=
@@ -43,8 +49,8 @@ github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8
 github.com/tim-ywliu/nested-logrus-formatter v1.3.2 h1:jugNJ2/CNCI79SxOJCOhwUHeN3O7/7/bj+ZRGOFlCSw=
 github.com/tim-ywliu/nested-logrus-formatter v1.3.2/go.mod h1:oGPmcxZB65j9Wo7mCnQKSrKEJtVDqyjD666SGmyStXI=
 golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.28.0 h1:Fksou7UEQUWlKvIdsqzJmUmCX3cZuD2+P3XyyzwMhlA=
-golang.org/x/sys v0.28.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
+golang.org/x/sys v0.30.0 h1:QjkSwP/36a20jFYWkSue1YwXzLmsV5Gfq7Eiy72C1uc=
+golang.org/x/sys v0.30.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 h1:qIbj1fsPNlZgppZ+VLlY7N33q108Sa+fhmuc+sWQYwY=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

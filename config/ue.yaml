@@ -1,0 +1,30 @@
+ue:
+  ranIp: "127.0.0.1"
+  ranPort: 31413
+
+  plmnId:
+    mcc: "208"
+    mnc: "93"
+  msin: "0000000001"
+
+  authenticationSubscription:
+    encPermanentKey: "8baf473f2f8fd09487cccbd7097c6862"
+    encOpcKey: "8e27b6af0e692e750f32667a3b14605d"
+    authenticationManagementField: "8000"
+    sequenceNumber: "000000000023"
+
+  integrityAlgorithm:
+    nia0: false
+    nia1: false
+    nia2: true
+    nia3: false
+  cipheringAlgorithm:
+    nea0: true
+    nea1: false
+    nea2: false
+    nea3: false
+
+  accessType: "3GPP_ACCESS" # 3GPP_ACCESS, NON_3GPP_ACCESS
+
+logger:
+  level: "debug" # error, warn, info, debug
