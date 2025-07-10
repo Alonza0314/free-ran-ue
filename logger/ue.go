@@ -11,7 +11,7 @@ type UeLogger struct {
 
 	CfgLog loggergoModel.LoggerInterface
 	UeLog  loggergoModel.LoggerInterface
-	TcpLog loggergoModel.LoggerInterface
+	RanLog loggergoModel.LoggerInterface
 	NasLog loggergoModel.LoggerInterface
 }
 
@@ -24,7 +24,7 @@ func NewUeLogger(level loggergoUtil.LogLevelString, filePath string, debugMode b
 
 		CfgLog: logger.WithTags(UE_TAG, CONFIG_TAG),
 		UeLog:  logger.WithTags(UE_TAG, UE_TAG),
-		TcpLog: logger.WithTags(UE_TAG, TCP_TAG),
+		RanLog: logger.WithTags(UE_TAG, RAN_TAG),
 		NasLog: logger.WithTags(UE_TAG, NAS_TAG),
 	}
 }

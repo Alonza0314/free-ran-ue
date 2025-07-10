@@ -10,6 +10,5 @@ const (
 
 	SCTP_TAG = "SCTP"
 	NGAP_TAG = "NGAP"
-	TCP_TAG  = "TCP"
 	NAS_TAG  = "NAS"
 )

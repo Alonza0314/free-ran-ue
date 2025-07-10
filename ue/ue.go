@@ -137,25 +137,25 @@ func (u *Ue) Stop() {
 }
 
 func (u *Ue) connectToRan() error {
-	u.UeLog.Infoln("Connecting to RAN")
+	u.RanLog.Infoln("Connecting to RAN")
 
-	u.TcpLog.Tracef("AMF address: %s:%d", u.ranIp, u.ranPort)
+	u.RanLog.Tracef("AMF address: %s:%d", u.ranIp, u.ranPort)
 
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", u.ranIp, u.ranPort))
 	if err != nil {
 		return err
 	}
 
-	u.TcpLog.Debugln("Dial SCTP to RAN success")
+	u.RanLog.Debugln("Dial SCTP to RAN success")
 
 	u.ranConn = conn
 
-	u.UeLog.Infof("Connected to RAN: %s:%d", u.ranIp, u.ranPort)
+	u.RanLog.Infof("Connected to RAN: %s:%d", u.ranIp, u.ranPort)
 	return nil
 }
 
 func (u *Ue) processUeRegistration() error {
-	u.UeLog.Infoln("Processing UE Registration")
+	u.RanLog.Infoln("Processing UE Registration")
 
 	mobileIdentity5GS := buildUeMobileIdentity5GS(u.supi)
 	u.NasLog.Tracef("Mobile identity 5GS: %+v", mobileIdentity5GS)
@@ -304,7 +304,7 @@ func (u *Ue) processUeRegistration() error {
 	u.NasLog.Tracef("Sent %d bytes of NAS Registration Complete Message to RAN", n)
 	u.NasLog.Debugln("Send NAS Registration Complete Message to RAN")
 
-	u.NasLog.Infoln("UE Registration finished")
+	u.RanLog.Infoln("UE Registration finished")
 	return nil
 }
 
