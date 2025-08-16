@@ -1,10 +1,19 @@
-.PHONY: build ns-up ns-down ns-ran ns-ue dc-ns-up dc-ns-down dc-ns-mran dc-ns-sran dc-ns-ue dci-ns-up dci-ns-down dci-ns-mran dci-ns-sran dci-ns-ue dci-ns-iperf-a dci-ns-iperf-b
+.PHONY: all bin console ns-up ns-down ns-ran ns-ue dc-ns-up dc-ns-down dc-ns-mran dc-ns-sran dc-ns-ue dci-ns-up dci-ns-down dci-ns-mran dci-ns-sran dci-ns-ue dci-ns-iperf-a dci-ns-iperf-b
 
-.DEFAULT_GOAL := build
+.DEFAULT_GOAL := bin
+
+all: bin console
 
 # Build the binary
-build:
+bin:
 	GOOS=linux GOARCH=amd64 go build -o build/free-ran-ue main.go
+
+# Build the console
+console:
+	cd console/frontend && yarn build
+	mkdir -p build/console
+	cp -r console/frontend/dist/* build/console/
+	rm -rf console/frontend/dist
 
 # Basic namespace
 ns-up:

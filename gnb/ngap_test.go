@@ -353,3 +353,36 @@ func TestBuildNgapUeContextReleaseCompleteMessage(t *testing.T) {
 		})
 	}
 }
+
+var testBuildPDUSessionResourceModifyIndicationTransferCases = []struct {
+	name    string
+	dlTeid  []byte
+	ranN3Ip string
+	qosId   int64
+}{
+	{
+		name:    "testBuildPDUSessionResourceModifyIndicationTransfer",
+		dlTeid:  []byte("\x00\x00\x00\x01"),
+		ranN3Ip: "127.0.0.1",
+		qosId:   1,
+	},
+}
+
+func TestBuildPDUSessionResourceModifyIndicationTransfer(t *testing.T) {
+	for _, testCase := range testBuildPDUSessionResourceModifyIndicationTransferCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			transferMessage := buildPDUSessionResourceModifyIndicationTransfer(testCase.dlTeid, testCase.ranN3Ip, testCase.qosId)
+			encodeTransferMessage, err := aper.MarshalWithParams(transferMessage, "valueExt")
+			if err != nil {
+				t.Fatalf("Failed to marshal pdu session resource modify indication transfer message: %v", err)
+			} else {
+				decodeTransferMessage := &ngapType.PDUSessionResourceModifyIndicationTransfer{}
+				if err := aper.UnmarshalWithParams(encodeTransferMessage, decodeTransferMessage, "valueExt"); err != nil {
+					t.Fatalf("Failed to unmarshal pdu session resource modify indication transfer message: %v", err)
+				} else if !reflect.DeepEqual(transferMessage, *decodeTransferMessage) {
+					t.Fatalf("PDU session resource modify indication transfer message mismatch")
+				}
+			}
+		})
+	}
+}

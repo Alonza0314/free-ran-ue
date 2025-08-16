@@ -1,0 +1,1072 @@
+{
+	"info": {
+		"_postman_id": "e73414d7-0a81-43e5-a47e-e37667e5e7c4",
+		"name": "free-ran-ue Console",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "38955132"
+	},
+	"item": [
+		{
+			"name": "Authenticate",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTQ5ODk5NjEsImlhdCI6MTc1NDk4NjM2MSwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.r6P-bprQKmM9Fi9UEM0Gp5Wc7ZH8ZLR7P3rWamut-ba",
+						"type": "text"
+					}
+				],
+				"url": "http://{{base_url}}/api/console/authenticate"
+			},
+			"response": [
+				{
+					"name": "200",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTQ5ODk5NjEsImlhdCI6MTc1NDk4NjM2MSwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.r6P-bprQKmM9Fi9UEM0Gp5Wc7ZH8ZLR7P3rWamut-bU",
+								"type": "text"
+							}
+						],
+						"url": "http://{{base_url}}/api/console/authenticate"
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "Text",
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 12 Aug 2025 08:15:41 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "37"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Authenticate successful\"\n}"
+				},
+				{
+					"name": "401",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTQ5ODk5NjEsImlhdCI6MTc1NDk4NjM2MSwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.r6P-bprQKmM9Fi9UEM0Gp5Wc7ZH8ZLR7P3rWamut-ba",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": "http://{{base_url}}/api/console/authenticate"
+					},
+					"status": "Unauthorized",
+					"code": 401,
+					"_postman_previewlanguage": "Text",
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 12 Aug 2025 08:17:06 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "38"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"No authentication header\"\n}"
+				}
+			]
+		},
+		{
+			"name": "ConsoleLogin",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"admin\",\n    \"password\": \"free-ran-ue\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "http://{{base_url}}/api/console/login"
+			},
+			"response": [
+				{
+					"name": "200",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"admin\",\n    \"password\": \"free-ran-ue\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{base_url}}/api/console/login"
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Mon, 11 Aug 2025 16:29:48 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "200"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Login successful\",\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTQ5MzMzODgsImlhdCI6MTc1NDkyOTc4OCwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.2URB-mlaKGO0aR1qmUzlVe38mmyOCmA81onwDvrrUl4\"\n}"
+				},
+				{
+					"name": "400",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": 1,\n    \"password\": \"free-ran-ue\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{base_url}}/api/console/login"
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Mon, 11 Aug 2025 16:30:04 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "47"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Invalid request format\",\n    \"token\": \"\"\n}"
+				},
+				{
+					"name": "401",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"admi\",\n    \"password\": \"free-ran-ue\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{base_url}}/api/console/login"
+					},
+					"status": "Unauthorized",
+					"code": 401,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Mon, 11 Aug 2025 16:30:33 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "44"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Invalid credentials\",\n    \"token\": \"\"\n}"
+				},
+				{
+					"name": "500",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"admin\",\n    \"password\": \"free-ran-ue\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{base_url}}/api/console/login"
+					},
+					"status": "Internal Server Error",
+					"code": 500,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Mon, 11 Aug 2025 16:28:19 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "45"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Failed to create JWT\",\n    \"token\": \"\"\n}"
+				}
+			]
+		},
+		{
+			"name": "ConsoleLogout",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "http://{{base_url}}/api/console/logout"
+			},
+			"response": [
+				{
+					"name": "200",
+					"originalRequest": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{base_url}}/api/console/logout"
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Mon, 11 Aug 2025 16:31:46 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "31"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Logout successful\"\n}"
+				}
+			]
+		},
+		{
+			"name": "ConsoleGnbInfo",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTUwNzE1MDQsImlhdCI6MTc1NTA2NzkwNCwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.qvIfTDsWgKPV4nkYlPzZE9QNVgWw7i4Yqrsr-ZHYlrU",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": 40104\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "http://{{base_url}}/api/console/gnb/info"
+			},
+			"response": [
+				{
+					"name": "200",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTQ5OTczNTEsImlhdCI6MTc1NDk5Mzc1MSwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.L0GK42jyV2qNrZpQov0t3sxsk9xO5JZ-VkzjMPswUwM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": 40104\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{base_url}}/api/console/gnb/info"
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 12 Aug 2025 10:22:31 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "134"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Get gNB info successful\",\n    \"gnbInfo\": {\n        \"gnbId\": \"000314\",\n        \"gnbName\": \"gNB-master\",\n        \"plmnId\": \"20893\",\n        \"snssai\": {\n            \"sst\": \"1\",\n            \"sd\": \"010203\"\n        },\n        \"ranUeList\": [\n            {\n                \"imsi\": \"imsi-208930000000001\",\n                \"nrdcIndicator\": true\n            }\n        ],\n        \"xnUeList\": []\n    }\n}"
+				},
+				{
+					"name": "400",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTQ5OTczNTEsImlhdCI6MTc1NDk5Mzc1MSwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.L0GK42jyV2qNrZpQov0t3sxsk9xO5JZ-VkzjMPswUwM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": \"40104\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{base_url}}/api/console/gnb/info"
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 12 Aug 2025 10:24:32 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "109"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Failed to bind JSON\",\n    \"gnbInfo\": {\n        \"gnbId\": \"\",\n        \"gnbName\": \"\",\n        \"plmnId\": \"\",\n        \"snssai\": {\n            \"sst\": \"\",\n            \"sd\": \"\"\n        },\n        \"ranUeList\": null,\n        \"xnUeList\": null\n    }\n}"
+				},
+				{
+					"name": "401",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTQ5OTczNTEsImlhdCI6MTc1NDk5Mzc1MSwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.L0GK42jyV2qNrZpQov0t3sxsk9xO5JZ-VkzjMPswUwM",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": 40104\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{base_url}}/api/console/gnb/info"
+					},
+					"status": "Unauthorized",
+					"code": 401,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 12 Aug 2025 10:23:44 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "114"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"No authentication header\",\n    \"gnbInfo\": {\n        \"gnbId\": \"\",\n        \"gnbName\": \"\",\n        \"plmnId\": \"\",\n        \"snssai\": {\n            \"sst\": \"\",\n            \"sd\": \"\"\n        },\n        \"ranUeList\": null,\n        \"xnUeList\": null\n    }\n}"
+				},
+				{
+					"name": "500",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTQ5OTczNTEsImlhdCI6MTc1NDk5Mzc1MSwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.L0GK42jyV2qNrZpQov0t3sxsk9xO5JZ-VkzjMPswUwM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": 40104\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{base_url}}/api/console/gnb/info"
+					},
+					"status": "Internal Server Error",
+					"code": 500,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 12 Aug 2025 10:25:26 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "153"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Failed to send request: failed to send request: <nil>\",\n    \"gnbInfo\": {\n        \"gnbId\": \"\",\n        \"gnbName\": \"\",\n        \"plmnId\": \"\",\n        \"snssai\": {\n            \"sst\": \"\",\n            \"sd\": \"\"\n        },\n        \"ranUeList\": null,\n        \"xnUeList\": null\n    }\n}"
+				}
+			]
+		},
+		{
+			"name": "ConsoleGnbUeNrdcModify",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTUzNTM4NjksImlhdCI6MTc1NTM1MDI2OSwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.h-xYNH0cOW8a5lKs2Gc9NFUxBigW9Spn7Aiifr_a3iI",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": 40104,\n    \"imsi\": \"imsi-208930000000001\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "http://{{base_url}}/api/console/gnb/ue/nrdc"
+			},
+			"response": [
+				{
+					"name": "200",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTUzNTM4NjksImlhdCI6MTc1NTM1MDI2OSwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.h-xYNH0cOW8a5lKs2Gc9NFUxBigW9Spn7Aiifr_a3iI",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": 40104,\n    \"imsi\": \"imsi-208930000000001\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{base_url}}/api/console/gnb/ue/nrdc"
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Length",
+							"value": "57"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Sat, 16 Aug 2025 13:23:11 GMT"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"UE imsi-208930000000001 NRDC modify success\"\n}"
+				},
+				{
+					"name": "400",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTUzNTM4NjksImlhdCI6MTc1NTM1MDI2OSwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.h-xYNH0cOW8a5lKs2Gc9NFUxBigW9Spn7Aiifr_a3iI",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": \"40104\",\n    \"imsi\": \"imsi-208930000000001\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{base_url}}/api/console/gnb/ue/nrdc"
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Sat, 16 Aug 2025 13:27:24 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "132"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Failed to bind JSON: json: cannot unmarshal string into Go struct field ConsoleGnbUeNrdcModifyRequest.port of type int\"\n}"
+				},
+				{
+					"name": "401",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTQ5ODk5NjEsImlhdCI6MTc1NDk4NjM2MSwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.r6P-bprQKmM9Fi9UEM0Gp5Wc7ZH8ZLR7P3rWamut-ba",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": \"40104\",\n    \"imsi\": \"imsi-208930000000001\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{base_url}}/api/console/gnb/ue/nrdc"
+					},
+					"status": "Unauthorized",
+					"code": 401,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Sat, 16 Aug 2025 13:27:47 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "86"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"failed to validate JWT: token signature is invalid: signature is invalid\"\n}"
+				},
+				{
+					"name": "404",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTUzNTM4NjksImlhdCI6MTc1NTM1MDI2OSwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.h-xYNH0cOW8a5lKs2Gc9NFUxBigW9Spn7Aiifr_a3iI",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": 40104,\n    \"imsi\": \"imsi-208930000000001\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{base_url}}/api/console/gnb/ue/nrdc"
+					},
+					"status": "Not Found",
+					"code": 404,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Length",
+							"value": "47"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Sat, 16 Aug 2025 13:34:08 GMT"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"UE imsi-208930000000001 not found\"\n}"
+				},
+				{
+					"name": "500",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTUzNTM4NjksImlhdCI6MTc1NTM1MDI2OSwic3ViIjoiMTIzLjE5Mi44My4yMDMifQ.h-xYNH0cOW8a5lKs2Gc9NFUxBigW9Spn7Aiifr_a3iI",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": 40104,\n    \"imsi\": \"imsi-208930000000001\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{base_url}}/api/console/gnb/ue/nrdc"
+					},
+					"status": "Internal Server Error",
+					"code": 500,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Content-Type, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST, PUT, DELETE, OPTIONS"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Date",
+							"value": "Sat, 16 Aug 2025 13:28:22 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "138"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"failed to send request: Post \\\"http://10.0.1.2:40104/api/gnb/ue/nrdc\\\": dial tcp 10.0.1.2:40104: connect: connection refused\"\n}"
+				}
+			]
+		},
+		{
+			"name": "GnbInfo",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "http://{{gnb_url}}/api/gnb/info"
+			},
+			"response": [
+				{
+					"name": "200",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": "http://{{gnb_url}}/api/gnb/info"
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "Text",
+					"header": [],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Get gNB info successful\",\n    \"gnbInfo\": {\n        \"gnbId\": \"000314\",\n        \"gnbName\": \"gNB-master\",\n        \"plmnId\": \"20893\",\n        \"snssai\": {\n            \"sst\": \"1\",\n            \"sd\": \"010203\"\n        },\n        \"ranUeList\": [\n            {\n                \"imsi\": \"imsi-208930000000001\",\n                \"nrdcIndicator\": true\n            }\n        ],\n        \"xnUeList\": []\n    }\n}"
+				}
+			]
+		},
+		{
+			"name": "GnbUeNrdcModify",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": 40104,\n    \"imsi\": \"imsi-208930000000001\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "http://{{gnb_url}}/api/gnb/ue/nrdc"
+			},
+			"response": [
+				{
+					"name": "200",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": 40104,\n    \"imsi\": \"imsi-208930000000001\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{gnb_url}}/api/gnb/ue/nrdc"
+					},
+					"_postman_previewlanguage": null,
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"message\": \"UE imsi-208930000000001 NRDC modify success\"\n}"
+				},
+				{
+					"name": "404",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": 40104,\n    \"imsi\": \"imsi-208930000000001\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{gnb_url}}/api/gnb/ue/nrdc"
+					},
+					"_postman_previewlanguage": null,
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"message\": \"UE imsi-208930000000001 not found\"\n}"
+				},
+				{
+					"name": "500",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ip\": \"10.0.1.2\",\n    \"port\": 40104,\n    \"imsi\": \"imsi-208930000000001\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://{{gnb_url}}/api/gnb/ue/nrdc"
+					},
+					"_postman_previewlanguage": null,
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"message\": \"\"Error process ue pdu session modify indication: error ngap pdu session resource modify confirm: pdu session resource modify failed\"\n}"
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "127.0.0.1:40104",
+			"type": "string"
+		},
+		{
+			"key": "gnb_url",
+			"value": "127.0.0.1:40104",
+			"type": "string"
+		}
+	]
+}

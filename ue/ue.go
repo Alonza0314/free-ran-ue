@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"time"
@@ -630,7 +631,8 @@ func (u *Ue) setupTunnelDevice() error {
 		for {
 			n, err := u.ranDataPlaneConn.Read(buffer)
 			if err != nil {
-				if errors.Is(err, net.ErrClosed) {
+				if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
+					u.TunLog.Debugln("RAN data plane connection closed")
 					return
 				}
 				u.RanLog.Errorf("Error read from ran data plane: %+v", err)
@@ -647,7 +649,8 @@ func (u *Ue) setupTunnelDevice() error {
 			for {
 				n, err := u.dcRanDataPlaneConn.Read(buffer)
 				if err != nil {
-					if errors.Is(err, net.ErrClosed) {
+					if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
+						u.TunLog.Debugln("DC RAN data plane connection closed")
 						return
 					}
 					u.RanLog.Errorf("Error read from dc ran data plane: %+v", err)

@@ -1,6 +1,8 @@
 name: 'Commit Message Check'
 
 on:
+  push:
+    branches: [ main ]
   pull_request:
 
 jobs:
@@ -9,4 +11,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: webiny/action-conventional-commits@v1.3.0

@@ -38,10 +38,14 @@ gnb:
     sst: "1"
     sd: "010203"
 
-  nrdc: true
+  staticNrdc: false
   xnInterface:
     xnIp: "10.0.1.2"
     xnPort: 31415
+
+  api:
+    ip: "10.0.1.3"
+    port: 40104
 
 logger:
   level: "info" # error, warn, info, debug, trace, test

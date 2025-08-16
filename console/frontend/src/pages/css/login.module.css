@@ -1,0 +1,103 @@
+.loginContainer {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.loginHeader {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.logo {
+  width: 80%;
+  height: auto;
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
+}
+
+.loginHeader h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 0;
+  color: #1e3a8a; /* Tailwind blue-900 藏青色 */
+}
+
+.loginHeader p {
+  margin: 0.5rem 0 0;
+  color: #475569; /* slate-600 */
+  font-size: 0.95rem;
+}
+
+.loginCard {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.input {
+  width: 90%;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: inherit;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.input::placeholder {
+  color: #64748b; /* slate-500 */
+}
+
+.input:focus {
+  outline: none;
+  border-color: #1e3a8a; /* blue-900 */
+  box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.15);
+}
+
+.submitButton {
+  width: 100%;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #1e40af, #1e3a8a); /* blue-800 to blue-900 */
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.submitButton:hover {
+  background: linear-gradient(135deg, #1e3a8a, #172554); /* blue-900 to blue-950 */
+  transform: translateY(-1px);
+}
+
+.submitButton:active {
+  transform: translateY(0);
+}
+
+.error {
+  color: #ef4444;
+  font-size: 0.875rem;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 6px;
+}
+

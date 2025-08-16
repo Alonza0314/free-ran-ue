@@ -55,6 +55,17 @@ xnPort: 31415
 
 This listener uses TCP, allowing any request to connect to it as needed. The processing function is defined in `gnb/xn.go` and can be extended in the `swtch` section.
 
+The supported `NGAP` types are:
+
+1. `ngapType.NGAPPDUPresentInitiatingMessage`
+
+    1. `ngapType.ProcedureCodePDUSessionResourceSetup`: used for static NR-DC set up.
+    2. `ngapType.ProcedureCodePDUSessionResourceModifyIndicatio`n: used for dynamic NR-DC initial set up.
+
+2. `ngapType.NGAPPDUPresentSuccessfulOutcome`
+
+    1. `ngapType.ProcedureCodePDUSessionResourceModifyIndication`: used for dynamic NR-DC final setup.
+
 ## GTP Forwarding
 
 The gNB implements GTP-U forwarding to handle user plane data between the UE and the core network. This includes:

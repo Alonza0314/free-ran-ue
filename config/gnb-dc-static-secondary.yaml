@@ -1,0 +1,51 @@
+gnb:
+  amfN2Ip: "10.0.1.1"
+  ranN2Ip: "10.0.1.3"
+  upfN3Ip: "10.0.1.1"
+  ranN3Ip: "10.0.1.3"
+
+  ranControlPlaneIp: "10.0.3.1"
+  ranDataPlaneIp: "10.0.3.1"
+
+  xnIp: "10.0.1.3"
+
+  amfN2Port: 38412
+  ranN2Port: 38413
+  upfN3Port: 2152
+  ranN3Port: 2152
+
+  ranControlPlanePort: 31413
+  ranDataPlanePort: 31414
+
+  xnPort: 31415
+
+  ngapPpid: 0x3c000000
+
+  gnbId: "314314"
+  gnbName: "gNB-secondary"
+
+  plmnId:
+    mcc: "208"
+    mnc: "93"
+
+  tai:
+    tac: "000001"
+    broadcastPlmnId:
+      mcc: "208"
+      mnc: "93"
+
+  snssai:
+    sst: "1"
+    sd: "010203"
+
+  staticNrdc: true
+  xnInterface:
+    xnIp: "10.0.1.2"
+    xnPort: 31415
+
+  api:
+    ip: "10.0.1.3"
+    port: 40104
+
+logger:
+  level: "info" # error, warn, info, debug, trace, test

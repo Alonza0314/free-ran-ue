@@ -1,0 +1,94 @@
+.container {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.content {
+  flex: 1;
+  padding: 2rem;
+  background-color: #f8fafc;
+  height: 100vh;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.header {
+  margin-bottom: 2rem;
+}
+
+.error {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.infoCard {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  margin-bottom: 2rem;
+}
+
+.infoCard:last-child {
+  margin-bottom: 5rem;
+}
+
+.title {
+  color: #1e293b;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 2rem 0;
+}
+
+.infoGroup {
+  margin-bottom: 1.5rem;
+}
+
+.infoGroup:last-child {
+  margin-bottom: 0;
+}
+
+.infoGroup label {
+  display: block;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.infoGroup div {
+  color: #1e293b;
+  font-size: 1rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.table th {
+  font-weight: 500;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.table td {
+  color: #1e293b;
+}
+
+.ueList {
+  margin-top: 1rem;
+}

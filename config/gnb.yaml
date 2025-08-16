@@ -34,5 +34,9 @@ gnb:
     sst: "1"
     sd: "010203"
 
+  api:
+    ip: "10.0.1.2"
+    port: 40104
+
 logger:
   level: "info" # error, warn, info, debug, trace, test

@@ -126,7 +126,7 @@ The configuration file `config/gnb.yaml` has already been set up with the enviro
     2. Start Master-gNB
 
         ```bash
-        ./build/free-ran-ue gnb -c config/gnb-dc-master.yaml
+        ./build/free-ran-ue gnb -c config/gnb-dc-static-master.yaml
         ```
 
 - Secondary-gNB
@@ -140,7 +140,7 @@ The configuration file `config/gnb.yaml` has already been set up with the enviro
     2. Start Master-gNB
 
         ```bash
-        ./build/free-ran-ue gnb -c config/gnb-dc-secondary.yaml
+        ./build/free-ran-ue gnb -c config/gnb-dc-static-secondary.yaml
         ```
 
 ## E. Start UE

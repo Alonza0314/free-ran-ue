@@ -27,15 +27,20 @@ const (
 
 type TeidGenerator struct {
 	teids sync.Map
+	mtx   sync.Mutex
 }
 
 func NewTeidGenerator() *TeidGenerator {
 	return &TeidGenerator{
 		teids: sync.Map{},
+		mtx:   sync.Mutex{},
 	}
 }
 
 func (t *TeidGenerator) AllocateTeid() aper.OctetString {
+	t.mtx.Lock()
+	defer t.mtx.Unlock()
+
 	for i := 1; i <= 65535; i++ {
 		if _, exists := t.teids.Load(int64(i)); !exists {
 			t.teids.Store(int64(i), true)
@@ -53,11 +58,16 @@ func (t *TeidGenerator) AllocateTeid() aper.OctetString {
 }
 
 func (t *TeidGenerator) ReleaseTeid(teid aper.OctetString) {
-	teidInt, err := hex.DecodeString(string(teid))
-	if err != nil {
-		panic(fmt.Errorf("error decode teid: %v", err))
+	t.mtx.Lock()
+	defer t.mtx.Unlock()
+
+	value := t.deFormatFromString(hex.EncodeToString(teid))
+
+	if _, exists := t.teids.Load(value); exists {
+		t.teids.Delete(value)
+	} else {
+		panic(fmt.Errorf("attempting to release teid %s that is not allocated", hex.EncodeToString(teid)))
 	}
-	t.teids.Delete(t.deFormatFromString(string(teidInt)))
 }
 
 func (t *TeidGenerator) formatAsString(teid int64) string {

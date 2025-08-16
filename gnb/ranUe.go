@@ -1,6 +1,7 @@
 package gnb
 
 import (
+	"fmt"
 	"net"
 	"sync"
 
@@ -10,15 +11,20 @@ import (
 
 type RanUeNgapIdGenerator struct {
 	usedRanUeIds sync.Map
+	mtx          sync.Mutex
 }
 
 func NewRanUeNgapIdGenerator() *RanUeNgapIdGenerator {
 	return &RanUeNgapIdGenerator{
 		usedRanUeIds: sync.Map{},
+		mtx:          sync.Mutex{},
 	}
 }
 
 func (g *RanUeNgapIdGenerator) AllocateRanUeId() int64 {
+	g.mtx.Lock()
+	defer g.mtx.Unlock()
+
 	for i := 1; i <= 65535; i++ {
 		if _, exists := g.usedRanUeIds.Load(int64(i)); !exists {
 			g.usedRanUeIds.Store(int64(i), true)
@@ -30,6 +36,9 @@ func (g *RanUeNgapIdGenerator) AllocateRanUeId() int64 {
 }
 
 func (g *RanUeNgapIdGenerator) ReleaseRanUeId(ranUeId int64) {
+	g.mtx.Lock()
+	defer g.mtx.Unlock()
+
 	g.usedRanUeIds.Delete(ranUeId)
 }
 
@@ -44,6 +53,9 @@ type RanUe struct {
 
 	n1Conn        net.Conn
 	dataPlaneConn net.Conn
+
+	nrdcIndicator    bool
+	nrdcIndicatorMtx sync.Mutex
 }
 
 func NewRanUe(n1Conn net.Conn, ranUeNgapIdGenerator *RanUeNgapIdGenerator) *RanUe {
@@ -59,10 +71,15 @@ func NewRanUe(n1Conn net.Conn, ranUeNgapIdGenerator *RanUeNgapIdGenerator) *RanU
 		mobileIdentity5GS: nasType.MobileIdentity5GS{},
 
 		n1Conn: n1Conn,
+
+		nrdcIndicator:    false,
+		nrdcIndicatorMtx: sync.Mutex{},
 	}
 }
 
-func (r *RanUe) Release(ranUeNgapIdGenerator *RanUeNgapIdGenerator) {
+func (r *RanUe) Release(ranUeNgapIdGenerator *RanUeNgapIdGenerator, teidGenerator *TeidGenerator) {
+	ranUeNgapIdGenerator.ReleaseRanUeId(r.ranUeNgapId)
+	teidGenerator.ReleaseTeid(r.dlTeid)
 }
 
 func (r *RanUe) GetAmfUeId() int64 {
@@ -73,12 +90,9 @@ func (r *RanUe) GetRanUeId() int64 {
 	return r.ranUeNgapId
 }
 
-func (r *RanUe) GetMobileIdentity5GS() nasType.MobileIdentity5GS {
-	return r.mobileIdentity5GS
-}
-
-func (r *RanUe) GetMobileIdentitySUCI() string {
-	return r.mobileIdentity5GS.GetSUCI()
+func (r *RanUe) GetMobileIdentityIMSI() string {
+	suci := r.mobileIdentity5GS.GetSUCI()
+	return fmt.Sprintf("imsi-%s%s%s", suci[7:10], suci[11:13], suci[20:])
 }
 
 func (r *RanUe) GetUlTeid() aper.OctetString {
@@ -119,4 +133,22 @@ func (r *RanUe) SetDlTeid(dlTeid aper.OctetString) {
 
 func (r *RanUe) SetDataPlaneConn(dataPlaneConn net.Conn) {
 	r.dataPlaneConn = dataPlaneConn
+}
+
+func (r *RanUe) IsNrdcActivated() bool {
+	r.nrdcIndicatorMtx.Lock()
+	defer r.nrdcIndicatorMtx.Unlock()
+	return r.nrdcIndicator
+}
+
+func (r *RanUe) ActivateNrdc() {
+	r.nrdcIndicatorMtx.Lock()
+	defer r.nrdcIndicatorMtx.Unlock()
+	r.nrdcIndicator = true
+}
+
+func (r *RanUe) DeactivateNrdc() {
+	r.nrdcIndicatorMtx.Lock()
+	defer r.nrdcIndicatorMtx.Unlock()
+	r.nrdcIndicator = false
 }

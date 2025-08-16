@@ -7,6 +7,7 @@ const (
 
 	RAN_TAG = "RAN"
 	UE_TAG  = "UE"
+	CSL_TAG = "CSL"
 
 	SCTP_TAG = "SCTP"
 	UDP_TAG  = "UDP"
@@ -17,4 +18,11 @@ const (
 	TUN_TAG  = "TUN"
 
 	XN_TAG = "XN"
+
+	CONSOLE_TAG = "CONSOLE"
+	LOGIN_TAG   = "LOGIN"
+	LOGOUT_TAG  = "LOGOUT"
+	AUTH_TAG    = "AUTH"
+
+	API_TAG = "API"
 )

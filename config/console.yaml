@@ -1,0 +1,12 @@
+console:
+  username: "admin"
+  password: "free-ran-ue"
+
+  port: 40104
+
+  jwt:
+    secret: "free-ran-ue"
+    expiresIn: 1h # 1 hour
+
+logger:
+  level: "info" # error, warn, info, debug, trace, test

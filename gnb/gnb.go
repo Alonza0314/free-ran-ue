@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"strconv"
 	"sync"
 	"time"
 
+	consoleModel "github.com/Alonza0314/free-ran-ue/console/model"
 	"github.com/Alonza0314/free-ran-ue/logger"
 	"github.com/Alonza0314/free-ran-ue/model"
 	"github.com/Alonza0314/free-ran-ue/util"
@@ -21,11 +23,20 @@ import (
 	"github.com/free5gc/ngap/ngapType"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/sctp"
+	"github.com/gin-gonic/gin"
 )
 
 type xnInterface struct {
 	xnIp   string
 	xnPort int
+}
+
+type api struct {
+	ip   string
+	port int
+
+	router *gin.Engine
+	server *http.Server
 }
 
 type Gnb struct {
@@ -61,20 +72,24 @@ type Gnb struct {
 	tai    ngapType.TAI
 	snssai ngapType.SNSSAI
 
-	nrdc bool
+	staticNrdc bool
+
 	xnInterface
 
 	ranControlPlaneListener *net.Listener
 	ranDataPlaneListener    *net.Listener
 	xnListener              *net.Listener
 
-	activeConns sync.Map
-	teidToConn  sync.Map
+	ranUeConns sync.Map
+	xnUeConns  sync.Map
+	teidToConn sync.Map
 
 	gtpChannel chan []byte
 
 	ranUeNgapIdGenerator *RanUeNgapIdGenerator
 	teidGenerator        *TeidGenerator
+
+	api
 
 	*logger.GnbLogger
 }
@@ -147,14 +162,26 @@ func NewGnb(config *model.GnbConfig, gnbLogger *logger.GnbLogger) *Gnb {
 		tai:    tai,
 		snssai: snssai,
 
-		nrdc: config.Gnb.Nrdc,
+		staticNrdc: config.Gnb.StaticNrdc,
 		xnInterface: xnInterface{
 			xnIp:   config.Gnb.XnInterface.XnIp,
 			xnPort: config.Gnb.XnInterface.XnPort,
 		},
 
+		ranUeConns: sync.Map{},
+		xnUeConns:  sync.Map{},
+		teidToConn: sync.Map{},
+
 		ranUeNgapIdGenerator: NewRanUeNgapIdGenerator(),
 		teidGenerator:        NewTeidGenerator(),
+
+		api: api{
+			ip:   config.Gnb.Api.Ip,
+			port: config.Gnb.Api.Port,
+
+			router: nil,
+			server: nil,
+		},
 
 		GnbLogger: gnbLogger,
 	}
@@ -185,27 +212,25 @@ func (g *Gnb) Start(ctx context.Context) error {
 	}
 	g.startGtpProcessor(ctx)
 
-	if g.nrdc {
-		if err := g.startXnListener(); err != nil {
-			g.XnLog.Errorf("Error starting XN listener: %v", err)
-			close(g.gtpChannel)
-			if err := g.n3Conn.Close(); err != nil {
-				g.GtpLog.Errorf("Error closing N3 connection: %v", err)
-			}
-			if err := g.n2Conn.Close(); err != nil {
-				g.SctpLog.Errorf("Error closing N2 connection: %v", err)
-			}
-			return err
+	if err := g.startXnListener(); err != nil {
+		g.XnLog.Errorf("Error starting XN listener: %v", err)
+		close(g.gtpChannel)
+		if err := g.n3Conn.Close(); err != nil {
+			g.GtpLog.Errorf("Error closing N3 connection: %v", err)
 		}
+		if err := g.n2Conn.Close(); err != nil {
+			g.SctpLog.Errorf("Error closing N2 connection: %v", err)
+		}
+		return err
 	}
 
 	if err := g.startRanControlPlaneListener(); err != nil {
 		g.RanLog.Errorf("Error starting ran control plane listener: %v", err)
-		if g.nrdc {
-			if err := (*g.xnListener).Close(); err != nil {
-				g.XnLog.Errorf("Error closing XN listener: %v", err)
-			}
+
+		if err := (*g.xnListener).Close(); err != nil {
+			g.XnLog.Errorf("Error closing XN listener: %v", err)
 		}
+
 		close(g.gtpChannel)
 		if err := g.n3Conn.Close(); err != nil {
 			g.GtpLog.Errorf("Error closing N3 connection: %v", err)
@@ -221,10 +246,8 @@ func (g *Gnb) Start(ctx context.Context) error {
 		if err := (*g.ranControlPlaneListener).Close(); err != nil {
 			g.RanLog.Errorf("Error closing ran control plane listener: %v", err)
 		}
-		if g.nrdc {
-			if err := (*g.xnListener).Close(); err != nil {
-				g.XnLog.Errorf("Error closing XN listener: %v", err)
-			}
+		if err := (*g.xnListener).Close(); err != nil {
+			g.XnLog.Errorf("Error closing XN listener: %v", err)
 		}
 		close(g.gtpChannel)
 		if err := g.n3Conn.Close(); err != nil {
@@ -237,10 +260,6 @@ func (g *Gnb) Start(ctx context.Context) error {
 	}
 
 	go func() {
-		if !g.nrdc {
-			return
-		}
-
 		for {
 			conn, err := (*g.xnListener).Accept()
 			if err != nil {
@@ -267,10 +286,16 @@ func (g *Gnb) Start(ctx context.Context) error {
 			}
 			g.RanLog.Infof("New UE connection accepted from: %v", conn.RemoteAddr())
 			ranUe := NewRanUe(conn, g.ranUeNgapIdGenerator)
-			g.activeConns.Store(ranUe, struct{}{})
+			if g.staticNrdc {
+				ranUe.ActivateNrdc()
+			}
+
+			g.ranUeConns.Store(ranUe, struct{}{})
 			go g.handleRanConnection(ctx, ranUe)
 		}
 	}()
+
+	g.startApiServer()
 
 	g.RanLog.Infoln("GNB started")
 	return nil
@@ -278,6 +303,8 @@ func (g *Gnb) Start(ctx context.Context) error {
 
 func (g *Gnb) Stop() {
 	g.RanLog.Infoln("Stopping GNB")
+
+	g.stopApiServer()
 
 	if err := (*g.ranDataPlaneListener).Close(); err != nil {
 		g.RanLog.Errorf("Error stopping ran data plane listener: %v", err)
@@ -293,16 +320,28 @@ func (g *Gnb) Stop() {
 	g.RanLog.Debugln("gNB listener stopped")
 	g.RanLog.Tracef("gNB listener stopped at %s:%d", g.ranControlPlaneIp, g.ranControlPlanePort)
 
-	if g.nrdc {
-		if err := (*g.xnListener).Close(); err != nil {
-			g.XnLog.Errorf("Error closing XN listener: %v", err)
-		}
-		g.XnLog.Debugln("XN listener stopped")
-		g.XnLog.Tracef("XN listener stopped at %s:%d", g.xnIp, g.xnPort)
+	if err := (*g.xnListener).Close(); err != nil {
+		g.XnLog.Errorf("Error closing XN listener: %v", err)
 	}
+	g.XnLog.Debugln("XN listener stopped")
+	g.XnLog.Tracef("XN listener stopped at %s:%d", g.xnIp, g.xnPort)
 
 	var wg sync.WaitGroup
-	g.activeConns.Range(func(key, value interface{}) bool {
+	g.xnUeConns.Range(func(key, value interface{}) bool {
+		wg.Add(1)
+		go func(xnUe *XnUe) {
+			defer wg.Done()
+			if xnUe, ok := key.(*XnUe); ok && xnUe.GetDataPlaneConn() != nil {
+				g.XnLog.Tracef("XN UE %v still in connection", xnUe.GetDataPlaneConn().RemoteAddr())
+				if err := xnUe.GetDataPlaneConn().Close(); err != nil {
+					g.XnLog.Errorf("Error closing XN UE connection: %v", err)
+				}
+			}
+			g.XnLog.Debugf("Closed XN UE connection from: %v", xnUe.GetDataPlaneConn().RemoteAddr())
+		}(key.(*XnUe))
+		return true
+	})
+	g.ranUeConns.Range(func(key, value interface{}) bool {
 		wg.Add(1)
 		go func(ranUe *RanUe) {
 			defer wg.Done()
@@ -467,6 +506,10 @@ func (g *Gnb) setupN1(ranUe *RanUe) error {
 	// accept UE data plane connection
 	ueDataPlaneConn, err := (*g.ranDataPlaneListener).Accept()
 	if err != nil {
+		if errors.Is(err, net.ErrClosed) {
+			g.RanLog.Warnf("UE data plane connection acceptor closed: %v", err)
+			return nil
+		}
 		return err
 	}
 	ranUe.SetDataPlaneConn(ueDataPlaneConn)
@@ -484,9 +527,9 @@ func (g *Gnb) setupN1(ranUe *RanUe) error {
 		}
 	}
 	g.teidToConn.Store(hex.EncodeToString(ranUe.GetDlTeid()), ueDataPlaneConn)
-	g.GtpLog.Debugf("Stored UE %s data plane connection with teid %s to teidToConn", ranUe.GetMobileIdentitySUCI(), hex.EncodeToString(ranUe.GetDlTeid()))
+	g.GtpLog.Debugf("Stored UE %s data plane connection with teid %s to teidToConn", ranUe.GetMobileIdentityIMSI(), hex.EncodeToString(ranUe.GetDlTeid()))
 
-	g.RanLog.Infof("UE %s N1 setup complete", ranUe.GetMobileIdentitySUCI())
+	g.RanLog.Infof("UE %s N1 setup complete", ranUe.GetMobileIdentityIMSI())
 	return nil
 }
 
@@ -572,7 +615,8 @@ func (g *Gnb) handleRanConnection(ctx context.Context, ranUe *RanUe) {
 			g.RanLog.Errorf("Error closing UE connection: %v", err)
 		}
 		g.RanLog.Infof("Closed UE connection from: %v", ranUe.GetN1Conn().RemoteAddr())
-		g.activeConns.Delete(ranUe)
+		ranUe.Release(g.ranUeNgapIdGenerator, g.teidGenerator)
+		g.ranUeConns.Delete(ranUe)
 	}()
 
 	if err := g.setupN1(ranUe); err != nil {
@@ -582,16 +626,16 @@ func (g *Gnb) handleRanConnection(ctx context.Context, ranUe *RanUe) {
 	g.GtpLog.Debugf("DL TEID: %s, UL TEID: %s", hex.EncodeToString(ranUe.GetDlTeid()), hex.EncodeToString(ranUe.GetUlTeid()))
 
 	// handle data plane from UE
-	go g.startUeDataPlaneProcessor(ranUe.GetDataPlaneConn(), ranUe.GetUlTeid(), ranUe.GetDlTeid())
+	go g.startUeDataPlaneProcessor(ranUe.GetDataPlaneConn(), ranUe.GetUlTeid(), ranUe.GetDlTeid(), false, ranUe.GetMobileIdentityIMSI())
 
 	if err := g.releaseN1(ranUe); err != nil {
 		g.RanLog.Errorf("Error releasing N1: %v", err)
 		return
 	}
-	g.RanLog.Infof("UE %s N1 released", ranUe.GetMobileIdentitySUCI())
+	g.RanLog.Infof("UE %s N1 released", ranUe.GetMobileIdentityIMSI())
 }
 
-func (g *Gnb) startUeDataPlaneProcessor(ueDataPlaneConn net.Conn, ulTeid, dlTeid aper.OctetString) {
+func (g *Gnb) startUeDataPlaneProcessor(ueDataPlaneConn net.Conn, ulTeid, dlTeid aper.OctetString, isXnUe bool, imsi string) {
 	buffer := make([]byte, 4096)
 	for {
 		n, err := ueDataPlaneConn.Read(buffer)
@@ -600,6 +644,18 @@ func (g *Gnb) startUeDataPlaneProcessor(ueDataPlaneConn net.Conn, ulTeid, dlTeid
 				g.teidToConn.Delete(hex.EncodeToString(dlTeid))
 				g.GtpLog.Debugf("Deleted teid %s from teidToConn", hex.EncodeToString(dlTeid))
 				g.GtpLog.Infof("Connection from UE IP: %v closed", ueDataPlaneConn.RemoteAddr())
+
+				if isXnUe {
+					g.xnUeConns.Range(func(key, value interface{}) bool {
+						if key.(*XnUe).GetIMSI() == imsi {
+							key.(*XnUe).Release(g.teidGenerator)
+							g.xnUeConns.Delete(key)
+							g.XnLog.Debugf("Deleted XN UE %s from xnUeConns", imsi)
+						}
+						return true
+					})
+					g.XnLog.Debugf("Deleted XN UE %s from xnUeConns", imsi)
+				}
 				return
 			}
 			g.RanLog.Warnf("Error reading from UE connection: %v", err)
@@ -629,7 +685,7 @@ func (g *Gnb) processUeInitialization(ranUe *RanUe) error {
 		return fmt.Errorf("error decode ue registration request from UE: %v", err)
 	}
 	ranUe.SetMobileIdentity5GS(nasMessage.GmmMessage.RegistrationRequest.MobileIdentity5GS)
-	g.NasLog.Debugf("Receive UE %s registration request from UE", ranUe.GetMobileIdentitySUCI())
+	g.NasLog.Debugf("Receive UE %s registration request from UE", ranUe.GetMobileIdentityIMSI())
 
 	ueInitialMessage, err := getInitialUeMessage(ranUe.GetRanUeId(), ueRegistrationRequest, g.plmnId, g.tai)
 	if err != nil {
@@ -842,12 +898,12 @@ func (g *Gnb) processUeInitialization(ranUe *RanUe) error {
 	g.NgapLog.Tracef("UE Configuration Update Command: %+v", ueConfigurationUpdateCommand)
 	g.NgapLog.Debugln("Receive UE Configuration Update Command from AMF")
 
-	g.RanLog.Infof("UE %s initialized", ranUe.GetMobileIdentitySUCI())
+	g.RanLog.Infof("UE %s initialized", ranUe.GetMobileIdentityIMSI())
 	return nil
 }
 
 func (g *Gnb) processUePduSessionEstablishment(ranUe *RanUe, pduSessionResourceSetupRequestTransfer *ngapType.PDUSessionResourceSetupRequestTransfer) error {
-	g.NgapLog.Infof("Processing UE %s PDU session establishment", ranUe.GetMobileIdentitySUCI())
+	g.NgapLog.Infof("Processing UE %s PDU session establishment", ranUe.GetMobileIdentityIMSI())
 
 	// receive pdu session establishment request from UE and send to AMF
 	pduSessionEstablishmentRequest := make([]byte, 1024)
@@ -910,8 +966,8 @@ func (g *Gnb) processUePduSessionEstablishment(ranUe *RanUe, pduSessionResourceS
 	}
 
 	var qosFlowPerTNLInformationItem ngapType.QosFlowPerTNLInformationItem
-	if g.nrdc {
-		if qosFlowPerTNLInformationItem, err = g.xnPduSessionResourceSetupRequestTransfer(ngapPduSessionResourceSetupRequestRaw[:n]); err != nil {
+	if ranUe.IsNrdcActivated() {
+		if qosFlowPerTNLInformationItem, err = g.xnPduSessionResourceSetupRequestTransfer(ranUe.GetMobileIdentityIMSI(), ngapPduSessionResourceSetupRequestRaw[:n]); err != nil {
 			g.XnLog.Warnf("Error xn pdu session resource setup request transfer: %v", err)
 		}
 	}
@@ -924,7 +980,7 @@ func (g *Gnb) processUePduSessionEstablishment(ranUe *RanUe, pduSessionResourceS
 	g.NasLog.Debugln("Send NAS PDU Session Establishment Accept to UE")
 
 	// send ngap pdu session resource setup response to AMF
-	ngapPduSessionResourceSetupResponseTransfer, err := getPduSessionResourceSetupResponseTransfer(ranUe.GetDlTeid(), g.ranN3Ip, 1, g.nrdc, qosFlowPerTNLInformationItem)
+	ngapPduSessionResourceSetupResponseTransfer, err := getPduSessionResourceSetupResponseTransfer(ranUe.GetDlTeid(), g.ranN3Ip, 1, g.staticNrdc, qosFlowPerTNLInformationItem)
 	if err != nil {
 		return fmt.Errorf("error get pdu session resource setup response transfer: %v", err)
 	}
@@ -943,7 +999,88 @@ func (g *Gnb) processUePduSessionEstablishment(ranUe *RanUe, pduSessionResourceS
 	g.NgapLog.Tracef("Sent %d bytes of pdu session resource setup response to AMF", n)
 	g.NgapLog.Debugln("Send PDU Session Resource Setup Response to AMF")
 
-	g.NgapLog.Infof("UE %s PDU session establishment completed", ranUe.GetMobileIdentitySUCI())
+	g.NgapLog.Infof("UE %s PDU session establishment completed", ranUe.GetMobileIdentityIMSI())
+	return nil
+}
+
+func (g *Gnb) processUePduSessionModifyIndication(ranUe *RanUe) error {
+	g.NgapLog.Infoln("Processing UE PDU Session Modify Indication")
+
+	pduSessionModifyIndicationTransfer, err := getPDUSessionResourceModifyIndicationTransfer(ranUe.GetDlTeid(), g.ranN3Ip, 1)
+	if err != nil {
+		return fmt.Errorf("error get pdu session modify indication transfer: %v", err)
+	}
+	g.NgapLog.Tracef("Get pdu session modify indication transfer: %+v", pduSessionModifyIndicationTransfer)
+
+	// send ngap pdu session resource modify indication to AMF
+	pduSessionModifyIndication, err := getPDUSessionResourceModifyIndication(ranUe.GetAmfUeId(), ranUe.GetRanUeId(), 4, pduSessionModifyIndicationTransfer)
+	if err != nil {
+		return fmt.Errorf("error get pdu session modify indication: %v", err)
+	}
+	g.NgapLog.Tracef("Get pdu session modify indication: %+v", pduSessionModifyIndication)
+
+	if pduSessionModifyIndication, err = g.xnPduSessionResourceModifyIndication(ranUe.GetMobileIdentityIMSI(), pduSessionModifyIndication); err != nil {
+		g.XnLog.Errorf("Error xn pdu session resource modify indication: %v", err)
+		return fmt.Errorf("error xn pdu session resource modify indication: %v", err)
+	}
+	g.XnLog.Tracef("Get pdu session modify indication: %+v", pduSessionModifyIndication)
+
+	n, err := g.n2Conn.Write(pduSessionModifyIndication)
+	if err != nil {
+		return fmt.Errorf("error send pdu session modify indication to AMF: %v", err)
+	}
+	g.NgapLog.Tracef("Sent %d bytes of pdu session modify indication to AMF", n)
+	g.NgapLog.Debugln("Send PDU Session Modify Indication to AMF")
+
+	// receive ngap pdu session resource setup request from AMF
+	ngapPduSessionResourceModifyConfirmRaw := make([]byte, 1024)
+	n, err = g.n2Conn.Read(ngapPduSessionResourceModifyConfirmRaw)
+	if err != nil {
+		return fmt.Errorf("error receive ngap pdu session resource modify confirm from AMF: %v", err)
+	}
+	g.NgapLog.Tracef("Received %d bytes of NGAP PDU Session Resource Modify Confirm from AMF", n)
+	g.NgapLog.Debugln("Receive NGAP PDU Session Resource Modify Confirm from AMF")
+
+	ngapPduSessionResourceModifyConfirm, err := ngap.Decoder(ngapPduSessionResourceModifyConfirmRaw[:n])
+	if err != nil {
+		return fmt.Errorf("error decode ngap pdu session resource modify confirm from AMF: %v", err)
+	}
+	if ngapPduSessionResourceModifyConfirm.Present != ngapType.NGAPPDUPresentSuccessfulOutcome || ngapPduSessionResourceModifyConfirm.SuccessfulOutcome.ProcedureCode.Value != ngapType.ProcedureCodePDUSessionResourceModifyIndication {
+		return fmt.Errorf("error ngap pdu session resource modify confirm: no pdu session resource modify confirm")
+	}
+	g.NgapLog.Tracef("NGAP PDU Session Resource Modify Confirm: %+v", ngapPduSessionResourceModifyConfirm)
+
+	// check successful outcome
+	for _, ie := range ngapPduSessionResourceModifyConfirm.SuccessfulOutcome.Value.PDUSessionResourceModifyConfirm.ProtocolIEs.List {
+		switch ie.Id.Value {
+		case ngapType.ProtocolIEIDAMFUENGAPID:
+		case ngapType.ProtocolIEIDRANUENGAPID:
+		case ngapType.ProtocolIEIDPDUSessionResourceModifyListModCfm:
+			g.NgapLog.Infoln("PDU session modify indication successful")
+		case ngapType.ProtocolIEIDPDUSessionResourceFailedToModifyListModCfm:
+			return fmt.Errorf("error ngap pdu session resource modify confirm: pdu session resource modify failed")
+		}
+	}
+
+	// send confirm to Xm for update xnUE ULTEID
+	if !ranUe.IsNrdcActivated() {
+		if _, err = g.xnPduSessionResourceModifyConfirm(ranUe.GetMobileIdentityIMSI(), ngapPduSessionResourceModifyConfirmRaw[:n]); err != nil {
+			g.XnLog.Errorf("Error xn pdu session resource modify confirm: %v", err)
+			return fmt.Errorf("error xn pdu session resource modify confirm: %v", err)
+		}
+		g.XnLog.Debugln("XN PDU Session Resource Modify Confirm sent")
+	}
+
+	// update ranUe NRDC status
+	if ranUe.IsNrdcActivated() {
+		ranUe.DeactivateNrdc()
+		g.NgapLog.Infof("UE %s NRDC deactivated", ranUe.GetMobileIdentityIMSI())
+	} else {
+		ranUe.ActivateNrdc()
+		g.NgapLog.Infof("UE %s NRDC activated", ranUe.GetMobileIdentityIMSI())
+	}
+
+	g.NgapLog.Infof("UE %s PDU session modify indication completed", ranUe.GetMobileIdentityIMSI())
 	return nil
 }
 
@@ -1048,7 +1185,7 @@ func (g *Gnb) processUeDeRegistration(ranUe *RanUe) error {
 	return nil
 }
 
-func (g *Gnb) xnPduSessionResourceSetupRequestTransfer(ngapPduSessionResourceSetupRequestRaw []byte) (ngapType.QosFlowPerTNLInformationItem, error) {
+func (g *Gnb) xnPduSessionResourceSetupRequestTransfer(imsi string, ngapPduSessionResourceSetupRequestRaw []byte) (ngapType.QosFlowPerTNLInformationItem, error) {
 	g.XnLog.Infoln("Processing XN PDU Session Resource Setup Request Transfer")
 
 	var qosFlowPerTNLInformationItem ngapType.QosFlowPerTNLInformationItem
@@ -1059,13 +1196,18 @@ func (g *Gnb) xnPduSessionResourceSetupRequestTransfer(ngapPduSessionResourceSet
 	}
 	g.XnLog.Debugf("Dial XN at %s:%d", g.xnIp, g.xnPort)
 
-	n, err := xnConn.Write(ngapPduSessionResourceSetupRequestRaw)
+	xnPdu := NewXnPdu(imsi, ngapPduSessionResourceSetupRequestRaw)
+	xnPduBytes, err := xnPdu.Marshal()
+	if err != nil {
+		return qosFlowPerTNLInformationItem, fmt.Errorf("error marshal xn pdu: %v", err)
+	}
+
+	n, err := xnConn.Write(xnPduBytes)
 	if err != nil {
 		return qosFlowPerTNLInformationItem, fmt.Errorf("error send ngap pdu session resource setup request to xn: %v", err)
 	}
 	g.XnLog.Tracef("Sent %d bytes of NGAP PDU Session Resource Setup Request to XN", n)
 	g.XnLog.Debugln("Send NGAP PDU Session Resource Setup Request to XN")
-
 
 	if err = xnConn.SetReadDeadline(time.Now().Add(time.Second * 5)); err != nil {
 		return qosFlowPerTNLInformationItem, fmt.Errorf("error set read deadline: %v", err)
@@ -1078,7 +1220,14 @@ func (g *Gnb) xnPduSessionResourceSetupRequestTransfer(ngapPduSessionResourceSet
 	g.XnLog.Tracef("Received %d bytes of NGAP PDU Session Resource Setup Response from XN", n)
 	g.XnLog.Debugln("Receive NGAP PDU Session Resource Setup Response from XN")
 
-	if err := aper.UnmarshalWithParams(buffer[:n], &qosFlowPerTNLInformationItem, "valueExt"); err != nil {
+	xnPdu = &XnPdu{}
+	if err := xnPdu.Unmarshal(buffer[:n]); err != nil {
+		return qosFlowPerTNLInformationItem, fmt.Errorf("error unmarshal xn pdu: %v", err)
+	}
+	g.XnLog.Tracef("Received XN PDU: %+v", xnPdu)
+	g.XnLog.Debugln("Receive XN PDU")
+
+	if err := aper.UnmarshalWithParams(xnPdu.Data, &qosFlowPerTNLInformationItem, "valueExt"); err != nil {
 		return qosFlowPerTNLInformationItem, fmt.Errorf("error unmarshal qos flow per tnl information item: %v", err)
 	}
 	g.XnLog.Tracef("Get QoS Flow per TNL Information Item: %+v", qosFlowPerTNLInformationItem)
@@ -1087,5 +1236,240 @@ func (g *Gnb) xnPduSessionResourceSetupRequestTransfer(ngapPduSessionResourceSet
 		return qosFlowPerTNLInformationItem, fmt.Errorf("error close xn connection: %v", err)
 	}
 
+	g.XnLog.Infoln("XN PDU Session Resource Setup Request Transfer completed")
 	return qosFlowPerTNLInformationItem, nil
+}
+
+func (g *Gnb) xnPduSessionResourceModifyIndication(imsi string, ngapPduSessionResourceModifyIndicationRaw []byte) ([]byte, error) {
+	g.XnLog.Infoln("Processing XN PDU Session Resource Modify Indication Transfer")
+
+	xnConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", g.xnInterface.xnIp, g.xnInterface.xnPort))
+	if err != nil {
+		return nil, fmt.Errorf("error dial xn: %v", err)
+	}
+	g.XnLog.Debugf("Dial XN at %s:%d", g.xnIp, g.xnPort)
+
+	xnPdu := NewXnPdu(imsi, ngapPduSessionResourceModifyIndicationRaw)
+	xnPduBytes, err := xnPdu.Marshal()
+	if err != nil {
+		return nil, fmt.Errorf("error marshal xn pdu: %v", err)
+	}
+
+	n, err := xnConn.Write(xnPduBytes)
+	if err != nil {
+		return nil, fmt.Errorf("error send ngap pdu session resource modify indication transfer to xn: %v", err)
+	}
+	g.XnLog.Tracef("Sent %d bytes of NGAP PDU Session Resource Modify Indication Transfer to XN", n)
+	g.XnLog.Debugln("Send NGAP PDU Session Resource Modify Indication Transfer to XN")
+
+	// if the modify is from 2 -> 1, here will read the same pdu as the request
+	// if the modify is from 1 -> 2, here will read the appended pdu with secondary tunnel information
+	if err = xnConn.SetReadDeadline(time.Now().Add(time.Second * 5)); err != nil {
+		return nil, fmt.Errorf("error set read deadline: %v", err)
+	}
+	buffer := make([]byte, 4096)
+	n, err = xnConn.Read(buffer)
+	if err != nil {
+		return nil, fmt.Errorf("error read ngap pdu session resource modify indication response from xn: %v", err)
+	}
+	g.XnLog.Tracef("Received %d bytes of NGAP PDU Session Resource Modify Indication Response from XN", n)
+	g.XnLog.Debugln("Receive NGAP PDU Session Resource Modify Indication Response from XN")
+
+	xnPdu = &XnPdu{}
+	if err := xnPdu.Unmarshal(buffer[:n]); err != nil {
+		return nil, fmt.Errorf("error unmarshal xn pdu: %v", err)
+	}
+	g.XnLog.Tracef("Received XN PDU: %+v", xnPdu)
+	g.XnLog.Debugln("Receive XN PDU")
+
+	if err := xnConn.Close(); err != nil {
+		return xnPdu.Data, fmt.Errorf("error close xn connection: %v", err)
+	}
+
+	g.XnLog.Infoln("XN PDU Session Resource Modify Indication Transfer completed")
+	return xnPdu.Data, nil
+}
+
+func (g *Gnb) xnPduSessionResourceModifyConfirm(imsi string, ngapPduSessionResourceModifyConfirmRaw []byte) ([]byte, error) {
+	g.XnLog.Infoln("Processing XN PDU Session Resource Modify Confirm")
+
+	xnConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", g.xnInterface.xnIp, g.xnInterface.xnPort))
+	if err != nil {
+		return nil, fmt.Errorf("error dial xn: %v", err)
+	}
+	g.XnLog.Debugf("Dial XN at %s:%d", g.xnIp, g.xnPort)
+
+	xnPdu := NewXnPdu(imsi, ngapPduSessionResourceModifyConfirmRaw)
+	xnPduBytes, err := xnPdu.Marshal()
+	if err != nil {
+		return nil, fmt.Errorf("error marshal xn pdu: %v", err)
+	}
+
+	n, err := xnConn.Write(xnPduBytes)
+	if err != nil {
+		return nil, fmt.Errorf("error send ngap pdu session resource modify confirm to xn: %v", err)
+	}
+	g.XnLog.Tracef("Sent %d bytes of NGAP PDU Session Resource Modify Confirm to XN", n)
+	g.XnLog.Debugln("Send NGAP PDU Session Resource Modify Confirm to XN")
+
+	if err = xnConn.SetReadDeadline(time.Now().Add(time.Second * 5)); err != nil {
+		return nil, fmt.Errorf("error set read deadline: %v", err)
+	}
+	buffer := make([]byte, 4096)
+	n, err = xnConn.Read(buffer)
+	if err != nil {
+		return nil, fmt.Errorf("error read ngap pdu session resource modify confirm response from xn: %v", err)
+	}
+	g.XnLog.Tracef("Received %d bytes of NGAP PDU Session Resource Modify Confirm Response from XN", n)
+	g.XnLog.Debugln("Receive NGAP PDU Session Resource Modify Confirm Response from XN")
+
+	if err := xnConn.Close(); err != nil {
+		return nil, fmt.Errorf("error close xn connection: %v", err)
+	}
+
+	g.XnLog.Infoln("XN PDU Session Resource Modify Confirm completed")
+	return nil, nil
+}
+
+func (g *Gnb) startApiServer() {
+	g.ApiLog.Infoln("Starting API server")
+
+	g.api.router = util.NewGinRouter(util.GNB_API_PREFIX, g.initApiRoutes())
+
+	g.api.server = &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", g.api.ip, g.api.port),
+		Handler: g.api.router,
+	}
+
+	go func() {
+		if err := g.api.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			g.ApiLog.Errorf("Failed to start API server: %v", err)
+		}
+	}()
+
+	time.Sleep(500 * time.Millisecond)
+
+	g.ApiLog.Infoln("============= API Info =============")
+	g.ApiLog.Infof("API access address: %s:%d", g.api.ip, g.api.port)
+	g.ApiLog.Infoln("====================================")
+
+	g.ApiLog.Infoln("API server started")
+}
+
+func (g *Gnb) stopApiServer() {
+	g.ApiLog.Infoln("Stopping API server")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if err := g.api.server.Shutdown(shutdownCtx); err != nil {
+		g.ApiLog.Errorf("Failed to stop API server: %v", err)
+	} else {
+		g.ApiLog.Infoln("API server stopped successfully")
+	}
+}
+
+func (g *Gnb) initApiRoutes() util.Routes {
+	return util.Routes{
+		{
+			Name:        "Console GNB Info",
+			Method:      http.MethodGet,
+			Pattern:     "/info",
+			HandlerFunc: g.handleConsoleGnbInfo,
+		},
+		{
+			Name:        "Console GNB UE NRDC Modify",
+			Method:      http.MethodPost,
+			Pattern:     "/ue/nrdc",
+			HandlerFunc: g.handleConsoleGnbUeNrdcModify,
+		},
+	}
+}
+
+func (g *Gnb) handleConsoleGnbInfo(c *gin.Context) {
+	g.ApiLog.Infoln("Handling console get gnb info")
+
+	plmnId := util.PlmnIdToModels(g.plmnId)
+	snssai := util.SNssaiToModels(g.snssai)
+
+	ranUeList := []consoleModel.RanUeInfo{}
+	g.ranUeConns.Range(func(key, value any) bool {
+		ranUe := key.(*RanUe)
+		ranUeList = append(ranUeList, consoleModel.RanUeInfo{
+			Imsi:          ranUe.GetMobileIdentityIMSI(),
+			NrdcIndicator: ranUe.IsNrdcActivated(),
+		})
+		return true
+	})
+
+	xnUeList := []consoleModel.XnUeInfo{}
+	g.xnUeConns.Range(func(key, value any) bool {
+		xnUe := key.(*XnUe)
+		xnUeList = append(xnUeList, consoleModel.XnUeInfo{
+			Imsi: xnUe.GetIMSI(),
+		})
+		return true
+	})
+
+	c.JSON(http.StatusOK, consoleModel.ConsoleGnbInfoResponse{
+		Message: "Get gNB info successful",
+		GnbInfo: consoleModel.GnbInfo{
+			GnbId:   hex.EncodeToString(g.gnbId),
+			GnbName: g.gnbName,
+
+			PlmnId: plmnId.Mcc + plmnId.Mnc,
+
+			Snssai: consoleModel.SnssaiIE{
+				Sst: strconv.Itoa(int(snssai.Sst)),
+				Sd:  snssai.Sd,
+			},
+
+			RanUeList: ranUeList,
+			XnUeList:  xnUeList,
+		},
+	})
+
+	g.ApiLog.Infoln("Console get gnb info successful")
+}
+
+func (g *Gnb) handleConsoleGnbUeNrdcModify(c *gin.Context) {
+	g.ApiLog.Infoln("Handling console gnb ue nrdc modify")
+
+	var request consoleModel.ConsoleGnbUeNrdcModifyRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		g.ApiLog.Warnf("Error bind console gnb ue nrdc modify request: %v", err)
+		c.JSON(http.StatusBadRequest, consoleModel.ConsoleGnbUeNrdcModifyResponse{
+			Message: fmt.Sprintf("Error bind console gnb ue nrdc modify request: %v", err),
+		})
+		return
+	}
+
+	var ranUe *RanUe
+	g.ranUeConns.Range(func(key, value any) bool {
+		if key.(*RanUe).GetMobileIdentityIMSI() == request.Imsi {
+			ranUe = key.(*RanUe)
+		}
+		return true
+	})
+
+	if ranUe == nil {
+		g.ApiLog.Warnf("UE %s not found", request.Imsi)
+		c.JSON(http.StatusNotFound, consoleModel.ConsoleGnbUeNrdcModifyResponse{
+			Message: fmt.Sprintf("UE %s not found", request.Imsi),
+		})
+		return
+	}
+	if err := g.processUePduSessionModifyIndication(ranUe); err != nil {
+		g.ApiLog.Errorf("Error process ue pdu session modify indication: %v", err)
+		c.JSON(http.StatusInternalServerError, consoleModel.ConsoleGnbUeNrdcModifyResponse{
+			Message: fmt.Sprintf("Error process ue pdu session modify indication: %v", err),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, consoleModel.ConsoleGnbUeNrdcModifyResponse{
+		Message: fmt.Sprintf("UE %s NRDC modify success", request.Imsi),
+	})
+
+	g.ApiLog.Infof("Console gnb ue %s nrdc control completed", request.Imsi)
 }

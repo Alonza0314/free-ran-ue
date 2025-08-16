@@ -1,0 +1,384 @@
+openapi: 3.0.0
+info:
+  title: free-ran-ue Console API
+  version: '1.0.0'
+  description: API documentation for free-ran-ue Console
+
+servers:
+  - url: http://{base_url}
+    variables:
+      base_url:
+        default: '127.0.0.1:40104'
+        description: API server base URL
+
+paths:
+  /api/console/login:
+    post:
+      summary: User Login
+      description: Authenticate user and return JWT token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: "admin"
+                password:
+                  type: string
+                  example: "free-ran-ue"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Login successful"
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '400':
+          description: Invalid request format
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Invalid request format"
+                  token:
+                    type: string
+                    example: ""
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Invalid credentials"
+                  token:
+                    type: string
+                    example: ""
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Failed to create JWT"
+                  token:
+                    type: string
+                    example: ""
+
+  /api/console/logout:
+    delete:
+      summary: User Logout
+      description: Logout current user
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Logout successful"
+
+  /api/console/authenticate:
+    post:
+      summary: Authenticate Token
+      description: Validate JWT token
+      tags:
+        - Authentication
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Authenticate successful"
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "No authentication header"
+
+  /api/console/gnb/info:
+    post:
+      summary: Get gNB Info
+      description: Get gNB information with specified IP and port
+      tags:
+        - gNB
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ip
+                - port
+              properties:
+                ip:
+                  type: string
+                  example: "10.0.1.2"
+                port:
+                  type: integer
+                  example: 40104
+      responses:
+        '200':
+          description: Get gNB info successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Get gNB info successful"
+                  gnbInfo:
+                    $ref: '#/components/schemas/GnbInfo'
+        '400':
+          description: Invalid request format
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Failed to bind JSON"
+                  gnbInfo:
+                    $ref: '#/components/schemas/EmptyGnbInfo'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "No authentication header"
+                  gnbInfo:
+                    $ref: '#/components/schemas/EmptyGnbInfo'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Failed to send request: failed to send request: <nil>"
+                  gnbInfo:
+                    $ref: '#/components/schemas/EmptyGnbInfo'
+
+  /api/console/gnb/ue/nrdc:
+    post:
+      summary: Modify UE NRDC Status
+      description: Modify the NRDC status of a specific UE
+      tags:
+        - gNB
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ip
+                - port
+                - imsi
+              properties:
+                ip:
+                  type: string
+                  example: "10.0.1.2"
+                port:
+                  type: integer
+                  example: 40104
+                imsi:
+                  type: string
+                  example: "imsi-208930000000001"
+      responses:
+        '200':
+          description: NRDC modification successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "UE imsi-208930000000001 NRDC modify success"
+        '400':
+          description: Invalid request format
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Failed to bind JSON: json: cannot unmarshal string into Go struct field ConsoleGnbUeNrdcModifyRequest.port of type int"
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "failed to validate JWT: token signature is invalid: signature is invalid"
+        '404':
+          description: UE not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "UE imsi-208930000000001 not found"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "failed to send request: Post \"http://10.0.1.2:40104/api/gnb/ue/nrdc\": dial tcp 10.0.1.2:40104: connect: connection refused"
+
+components:
+  schemas:
+    Snssai:
+      type: object
+      properties:
+        sst:
+          type: string
+          example: "1"
+        sd:
+          type: string
+          example: "010203"
+
+    RanUe:
+      type: object
+      properties:
+        imsi:
+          type: string
+          example: "imsi-208930000000001"
+        nrdcIndicator:
+          type: boolean
+          example: true
+
+    XnUe:
+      type: object
+      properties:
+        imsi:
+          type: string
+          example: "imsi-208930000000001"
+
+    GnbInfo:
+      type: object
+      properties:
+        gnbId:
+          type: string
+          example: "000314"
+        gnbName:
+          type: string
+          example: "gNB-master"
+        plmnId:
+          type: string
+          example: "20893"
+        snssai:
+          $ref: '#/components/schemas/Snssai'
+        ranUeList:
+          type: array
+          items:
+            $ref: '#/components/schemas/RanUe'
+        xnUeList:
+          type: array
+          items:
+            $ref: '#/components/schemas/XnUe'
+
+    EmptyGnbInfo:
+      type: object
+      properties:
+        gnbId:
+          type: string
+          example: ""
+        gnbName:
+          type: string
+          example: ""
+        plmnId:
+          type: string
+          example: ""
+        snssai:
+          type: object
+          properties:
+            sst:
+              type: string
+              example: ""
+            sd:
+              type: string
+              example: ""
+        ranUeList:
+          type: array
+          items:
+            $ref: '#/components/schemas/RanUe'
+          example: null
+        xnUeList:
+          type: array
+          items:
+            $ref: '#/components/schemas/XnUe'
+          example: null
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

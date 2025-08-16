@@ -70,12 +70,14 @@
 
     The configuration `YAML` file template is located at:
 
-    - `free-ran-ue/config/gnb-dc-master.yaml`
-    - `free-ran-ue/config/gnb-dc-secondary.yaml`
+    - `free-ran-ue/config/gnb-dc-static-master.yaml`
+    - `free-ran-ue/config/gnb-dc-static-secondary.yaml`
 
     Ensure that the information matches your core network settings. For core network settings, please refer to: [Start free5GC](01-start-free5gc.md)
 
     Please also pay attention to the `xnIp` and `xnPort` field, as these will be used for the Xn-interface between the gNBs.
+
+    Also noticed the fields `staticNrdc` that should be set as `true` for enabling static NR-DC and `xnInterface` that identify the neighbor gNB's IP and port.
 
 - Start gNB:
 
@@ -84,13 +86,13 @@
     - Master-gNB:
 
         ```bash
-        ./build/free-ran-ue gnb -c config/gnb-dc-master.yaml
+        ./build/free-ran-ue gnb -c config/gnb-dc-static-master.yaml
         ```
 
     - Secondary-gNB:
 
         ```bash
-        ./build/free-ran-ue gnb -c config/gnb-dc-secondary.yaml
+        ./build/free-ran-ue gnb -c config/gnb-dc-static-secondary.yaml
         ```
 
 ## D. Start UE
