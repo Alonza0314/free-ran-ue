@@ -48,6 +48,10 @@ func ueFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
+	if err := util.ValidateUe(&ueConfig); err != nil {
+		panic(err)
+	}
+
 	logger := logger.NewUeLogger(loggergoUtil.LogLevelString(ueConfig.Logger.Level), "", true)
 
 	ue := ue.NewUe(&ueConfig, &logger)
