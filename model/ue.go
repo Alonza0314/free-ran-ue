@@ -3,65 +3,65 @@ package model
 import "github.com/free5gc/openapi/models"
 
 type UeConfig struct {
-	Ue     UeIE     `yaml:"ue" valid:"required"`
-	Logger LoggerIE `yaml:"logger" valid:"required"`
+	Ue     UeIE     `yaml:"ue"`
+	Logger LoggerIE `yaml:"logger"`
 }
 
 type UeIE struct {
-	RanControlPlaneIp string `yaml:"ranControlPlaneIp" valid:"required"`
-	RanDataPlaneIp    string `yaml:"ranDataPlaneIp" valid:"required"`
+	RanControlPlaneIp string `yaml:"ranControlPlaneIp"`
+	RanDataPlaneIp    string `yaml:"ranDataPlaneIp"`
 
-	RanControlPlanePort int `yaml:"ranControlPlanePort" valid:"required"`
-	RanDataPlanePort    int `yaml:"ranDataPlanePort" valid:"required"`
+	RanControlPlanePort int `yaml:"ranControlPlanePort"`
+	RanDataPlanePort    int `yaml:"ranDataPlanePort"`
 
-	PlmnId PlmnIdIE `yaml:"plmnId" valid:"required"`
-	Msin   string   `yaml:"msin" valid:"required"`
+	PlmnId PlmnIdIE `yaml:"plmnId"`
+	Msin   string   `yaml:"msin"`
 
-	AccessType                 models.AccessType            `yaml:"accessType" valid:"required"`
-	AuthenticationSubscription AuthenticationSubscriptionIE `yaml:"authenticationSubscription" valid:"required"`
+	AccessType                 models.AccessType            `yaml:"accessType"`
+	AuthenticationSubscription AuthenticationSubscriptionIE `yaml:"authenticationSubscription"`
 
-	CipheringAlgorithm CipheringAlgorithmIE `yaml:"cipheringAlgorithm" valid:"required"`
-	IntegrityAlgorithm IntegrityAlgorithmIE `yaml:"integrityAlgorithm" valid:"required"`
+	CipheringAlgorithm CipheringAlgorithmIE `yaml:"cipheringAlgorithm"`
+	IntegrityAlgorithm IntegrityAlgorithmIE `yaml:"integrityAlgorithm"`
 
-	PduSession PduSessionIE `yaml:"pduSession" valid:"required"`
+	PduSession PduSessionIE `yaml:"pduSession"`
 
 	Nrdc NrdcIE `yaml:"nrdc"`
 
-	UeTunnelDevice string `yaml:"ueTunnelDevice" valid:"required"`
+	UeTunnelDevice string `yaml:"ueTunnelDevice"`
 }
 
 type AuthenticationSubscriptionIE struct {
-	EncPermanentKey               string `yaml:"encPermanentKey" valid:"required"`
-	EncOpcKey                     string `yaml:"encOpcKey" valid:"required"`
-	AuthenticationManagementField string `yaml:"authenticationManagementField" valid:"required"`
-	SequenceNumber                string `yaml:"sequenceNumber" valid:"required"`
+	EncPermanentKey               string `yaml:"encPermanentKey"`
+	EncOpcKey                     string `yaml:"encOpcKey"`
+	AuthenticationManagementField string `yaml:"authenticationManagementField"`
+	SequenceNumber                string `yaml:"sequenceNumber"`
 }
 
 type IntegrityAlgorithmIE struct {
-	Nia0 bool `yaml:"nia0" valid:"required"`
-	Nia1 bool `yaml:"nia1" valid:"required"`
-	Nia2 bool `yaml:"nia2" valid:"required"`
-	Nia3 bool `yaml:"nia3" valid:"required"`
+	Nia0 bool `yaml:"nia0"`
+	Nia1 bool `yaml:"nia1"`
+	Nia2 bool `yaml:"nia2"`
+	Nia3 bool `yaml:"nia3"`
 }
 
 type CipheringAlgorithmIE struct {
-	Nea0 bool `yaml:"nea0" valid:"required"`
-	Nea1 bool `yaml:"nea1" valid:"required"`
-	Nea2 bool `yaml:"nea2" valid:"required"`
-	Nea3 bool `yaml:"nea3" valid:"required"`
+	Nea0 bool `yaml:"nea0"`
+	Nea1 bool `yaml:"nea1"`
+	Nea2 bool `yaml:"nea2"`
+	Nea3 bool `yaml:"nea3"`
 }
 
 type PduSessionIE struct {
-	Dnn    string   `yaml:"dnn" valid:"required"`
-	Snssai SnssaiIE `yaml:"snssai" valid:"required"`
+	Dnn    string   `yaml:"dnn"`
+	Snssai SnssaiIE `yaml:"snssai"`
 }
 
 type NrdcIE struct {
-	Enable         bool          `yaml:"enable" valid:"required"`
-	DcRanDataPlane DcDataPlaneIE `yaml:"dcRanDataPlane" valid:"required"`
+	Enable         bool          `yaml:"enable"`
+	DcRanDataPlane DcDataPlaneIE `yaml:"dcRanDataPlane"`
 }
 
 type DcDataPlaneIE struct {
-	Ip   string `yaml:"ip" valid:"required"`
-	Port int    `yaml:"port" valid:"required"`
+	Ip   string `yaml:"ip"`
+	Port int    `yaml:"port"`
 }
