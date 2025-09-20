@@ -41,6 +41,10 @@ func gnbFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
+	if err := util.ValidateGnb(&gnbConfig); err != nil {
+		panic(err)
+	}
+
 	logger := logger.NewGnbLogger(loggergoUtil.LogLevelString(gnbConfig.Logger.Level), "", true)
 
 	gnb := gnb.NewGnb(&gnbConfig, &logger)
