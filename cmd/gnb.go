@@ -10,7 +10,6 @@ import (
 	"github.com/Alonza0314/free-ran-ue/logger"
 	"github.com/Alonza0314/free-ran-ue/model"
 	"github.com/Alonza0314/free-ran-ue/util"
-	loggergo "github.com/Alonza0314/logger-go/v2"
 	loggergoUtil "github.com/Alonza0314/logger-go/v2/util"
 	"github.com/spf13/cobra"
 )
@@ -32,10 +31,6 @@ func init() {
 }
 
 func gnbFunc(cmd *cobra.Command, args []string) {
-	if os.Geteuid() != 0 {
-		loggergo.Error("", "This program requires root privileges to bring up tunnel device.")
-		return
-	}
 	gnbConfigFilePath, err := cmd.Flags().GetString("config")
 	if err != nil {
 		panic(err)
