@@ -4,8 +4,8 @@ gnb:
   upfN3Ip: "10.0.1.5"
   ranN3Ip: "10.0.1.2"
 
-  ranControlPlaneIp: "10.0.2.3"
-  ranDataPlaneIp: "10.0.2.3"
+  ranControlPlaneIp: "0.0.0.0"
+  ranDataPlaneIp: "0.0.0.0"
 
   amfN2Port: 38412
   ranN2Port: 38413

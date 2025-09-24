@@ -1,0 +1,362 @@
+services:
+  db:
+    container_name: mongodb
+    image: mongo:4.4
+    command: mongod --port 27017
+    expose:
+      - "27017"
+    volumes:
+      - dbdata:/data/db
+    networks:
+      sbi:
+        aliases:
+          - db.free5gc.org
+
+  amf:
+    container_name: amf
+    image: free5gc/amf:latest
+    command: ./amf -c ./config/amfcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/amfcfg.yaml:/free5gc/config/amfcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      GIN_MODE: release
+    networks:
+      sbi:
+        aliases:
+          - amf.free5gc.org
+      cn-rans:
+        ipv4_address: 10.0.1.3
+        aliases:
+          - n2.free5gc.org
+    depends_on:
+      - nrf
+
+  ausf:
+    container_name: ausf
+    image: free5gc/ausf:latest
+    command: ./ausf -c ./config/ausfcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/ausfcfg.yaml:/free5gc/config/ausfcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      GIN_MODE: release
+    networks:
+      sbi:
+        aliases:
+          - ausf.free5gc.org
+    depends_on:
+      - nrf
+
+  chf:
+    container_name: chf
+    image: free5gc/chf:latest
+    command: ./chf -c ./config/chfcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/chfcfg.yaml:/free5gc/config/chfcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      DB_URI: mongodb://db/free5gc
+      GIN_MODE: release
+    networks:
+      sbi:
+        aliases:
+          - chf.free5gc.org
+    depends_on:
+      - db
+      - nrf
+      - webconsole
+
+  nrf:
+    container_name: nrf
+    image: free5gc/nrf:latest
+    command: ./nrf -c ./config/nrfcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/nrfcfg.yaml:/free5gc/config/nrfcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      DB_URI: mongodb://db/free5gc
+      GIN_MODE: release
+    networks:
+      sbi:
+        aliases:
+          - nrf.free5gc.org
+    depends_on:
+      - db
+
+  nssf:
+    container_name: nssf
+    image: free5gc/nssf:latest
+    command: ./nssf -c ./config/nssfcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/nssfcfg.yaml:/free5gc/config/nssfcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      GIN_MODE: release
+    networks:
+      sbi:
+        aliases:
+          - nssf.free5gc.org
+    depends_on:
+      - nrf
+
+  pcf:
+    container_name: pcf
+    image: free5gc/pcf:latest
+    command: ./pcf -c ./config/pcfcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/pcfcfg.yaml:/free5gc/config/pcfcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      GIN_MODE: release
+    networks:
+      sbi:
+        aliases:
+          - pcf.free5gc.org
+    depends_on:
+      - nrf
+
+  smf:
+    container_name: smf
+    image: free5gc/smf:latest
+    command: ./smf -c ./config/smfcfg.yaml -u ./config/uerouting.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/smfcfg.yaml:/free5gc/config/smfcfg.yaml
+      - ./config/uerouting.yaml:/free5gc/config/uerouting.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      GIN_MODE: release
+    networks:
+      sbi:
+        aliases:
+          - smf.free5gc.org
+    depends_on:
+      - nrf
+      - upf
+
+  udm:
+    container_name: udm
+    image: free5gc/udm:latest
+    command: ./udm -c ./config/udmcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/udmcfg.yaml:/free5gc/config/udmcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      GIN_MODE: release
+    networks:
+      sbi:
+        aliases:
+          - udm.free5gc.org
+    depends_on:
+      - db
+      - nrf
+
+  udr:
+    container_name: udr
+    image: free5gc/udr:latest
+    command: ./udr -c ./config/udrcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/udrcfg.yaml:/free5gc/config/udrcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      DB_URI: mongodb://db/free5gc
+      GIN_MODE: release
+    networks:
+      sbi:
+        aliases:
+          - udr.free5gc.org
+    depends_on:
+      - db
+      - nrf
+
+  upf:
+    container_name: upf
+    image: free5gc/upf:latest
+    command: bash -c "./upf-iptables.sh && ./upf -c ./config/upfcfg.yaml"
+    volumes:
+      - ./config/upfcfg.yaml:/free5gc/config/upfcfg.yaml
+      - ./script/upf-iptables.sh:/free5gc/upf-iptables.sh
+    cap_add:
+      - NET_ADMIN
+    networks:
+      sbi:
+        aliases:
+          - upf.free5gc.org
+      cn-rans:
+        ipv4_address: 10.0.1.5
+        aliases:
+          - n3.free5gc.org
+
+  webconsole:
+    container_name: free5gc-console
+    image: free5gc/webui:latest
+    command: ./webui -c ./config/webconsolecfg.yaml
+    expose:
+      - "2121"
+    volumes:
+      - ./config/free5gc-consolecfg.yaml:/free5gc/config/webconsolecfg.yaml
+    environment:
+      - GIN_MODE=release
+    networks:
+      sbi:
+        aliases:
+          - webconsole
+    ports:
+      - "5000:5000"
+      - "2122:2122"
+      - "2121:2121"
+    depends_on:
+      - db
+      - nrf
+
+  gnb-master:
+    container_name: gnb-master
+    image: free-ran-ue:latest
+    command: ./free-ran-ue gnb -c gnbcfg.yaml
+    volumes:
+      - ./config/gnbcfg-dc-dynamic-master.yaml:/free-ran-ue/gnbcfg.yaml
+    networks:
+      cn-rans:
+        ipv4_address: 10.0.1.2
+      # mran-ue:
+      #   ipv4_address: 10.0.2.3
+      console-rans:
+        ipv4_address: 10.0.4.3
+    ports:
+      - "31413:31413"
+      - "31414:31414"
+    depends_on:
+      - amf
+      - ausf
+      - chf
+      - nrf
+      - nssf
+      - pcf
+      - smf
+      - udm
+      - udr
+      - upf
+
+  gnb-secondary:
+    container_name: gnb-secondary
+    image: free-ran-ue:latest
+    command: ./free-ran-ue gnb -c gnbcfg.yaml
+    volumes:
+      - ./config/gnbcfg-dc-dynamic-secondary.yaml:/free-ran-ue/gnbcfg.yaml
+    networks:
+      cn-rans:
+        ipv4_address: 10.0.1.4
+      # sran-ue:
+      #   ipv4_address: 10.0.3.3
+      console-rans:
+        ipv4_address: 10.0.4.5
+    ports:
+      - "31415:31413"
+      - "31416:31414"
+    depends_on:
+      - amf
+      - ausf
+      - chf
+      - nrf
+      - nssf
+      - pcf
+      - smf
+      - udm
+      - udr
+      - upf
+
+  # ue:
+  #   container_name: ue
+  #   image: free-ran-ue:latest
+  #   command: ["tail", "-f", "/dev/null"]
+  #   volumes:
+  #     - ./config/uecfg-dc-dynamic.yaml:/free-ran-ue/uecfg.yaml
+  #   cap_add:
+  #     - NET_ADMIN
+  #   devices:
+  #     - /dev/net/tun:/dev/net/tun
+  #   networks:
+  #     mran-ue:
+  #       ipv4_address: 10.0.2.2
+  #     sran-ue:
+  #       ipv4_address: 10.0.3.2
+  #   depends_on:
+  #     - gnb-master
+  #     - gnb-secondary
+
+  console:
+    container_name: fru-console
+    image: free-ran-ue:latest
+    command: ./free-ran-ue console -c consolecfg.yaml
+    volumes:
+      - ./config/fru-consolecfg.yaml:/free-ran-ue/consolecfg.yaml
+    networks:
+      console-rans:
+        ipv4_address: 10.0.4.2
+    ports:
+      - "40104:40104"
+    depends_on:
+      - gnb-master
+      - gnb-secondary
+
+networks:
+  sbi:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.10.0/24
+    driver_opts:
+      com.docker.network.bridge.name: br-sbi
+
+  cn-rans:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.1.0/24
+    driver_opts:
+      com.docker.network.bridge.name: br-cn-rans
+
+  # mran-ue:
+  #   ipam:
+  #     driver: default
+  #     config:
+  #       - subnet: 10.0.2.0/24
+  #   driver_opts:
+  #     com.docker.network.bridge.name: br-mran-ue
+
+  # sran-ue:
+  #   ipam:
+  #     driver: default
+  #     config:
+  #       - subnet: 10.0.3.0/24
+  #   driver_opts:
+  #     com.docker.network.bridge.name: br-sran-ue
+
+  console-rans:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.4.0/24
+    driver_opts:
+      com.docker.network.bridge.name: br-console-rans
+
+volumes:
+  dbdata:
