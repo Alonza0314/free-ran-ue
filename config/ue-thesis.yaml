@@ -1,0 +1,47 @@
+ue:
+  ranControlPlaneIp: "140.113.216.50"
+  ranDataPlaneIp: "140.113.216.50"
+
+  ranControlPlanePort: 31413
+  ranDataPlanePort: 31414
+
+  plmnId:
+    mcc: "208"
+    mnc: "93"
+  msin: "0000000001"
+
+  authenticationSubscription:
+    encPermanentKey: "8baf473f2f8fd09487cccbd7097c6862"
+    encOpcKey: "8e27b6af0e692e750f32667a3b14605d"
+    authenticationManagementField: "8000"
+    sequenceNumber: "000000000023"
+
+  integrityAlgorithm:
+    nia0: false
+    nia1: false
+    nia2: true
+    nia3: false
+  cipheringAlgorithm:
+    nea0: true
+    nea1: false
+    nea2: false
+    nea3: false
+
+  pduSession:
+    dnn: "internet"
+    snssai:
+      sst: "1"
+      sd: "010203"
+
+  accessType: "3GPP_ACCESS" # 3GPP_ACCESS, NON_3GPP_ACCESS
+
+  nrdc:
+    enable: false
+    dcRanDataPlane:
+      ip: "140.113.216.50"
+      port: 31416
+
+  ueTunnelDevice: "ueTun0"
+
+logger:
+  level: "info" # error, warn, info, debug, trace
