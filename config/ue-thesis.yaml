@@ -1,6 +1,7 @@
 ue:
   ranControlPlaneIp: "140.113.216.50"
   ranDataPlaneIp: "140.113.216.50"
+  localDataPlaneIp: "140.113.216.59"
 
   ranControlPlanePort: 31413
   ranDataPlanePort: 31414
@@ -40,6 +41,7 @@ ue:
     dcRanDataPlane:
       ip: "140.113.216.50"
       port: 31416
+    dcLocalDataPlaneIp: "140.113.216.39"
 
   ueTunnelDevice: "ueTun0"
 
