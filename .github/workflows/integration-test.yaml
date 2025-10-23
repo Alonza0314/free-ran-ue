@@ -2,9 +2,12 @@ name: Integration Test
 
 on:
   workflow_dispatch:
+  issue_comment:
+    types: [created]
 
 jobs:
   integration-test:
+    if: github.event.comment.body == '@ci'
     runs-on: self-hosted
 
     steps:
