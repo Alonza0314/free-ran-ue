@@ -242,7 +242,7 @@ services:
         ipv4_address: 10.0.4.3
     ports:
       - "31413:31413"
-      - "31414:31414"
+      - "31414:31414/udp"
     depends_on:
       - amf
       - ausf
@@ -270,7 +270,7 @@ services:
         ipv4_address: 10.0.4.5
     ports:
       - "31415:31413"
-      - "31416:31414"
+      - "31416:31414/udp"
     depends_on:
       - amf
       - ausf
