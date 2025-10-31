@@ -1,0 +1,170 @@
+/* #004480 主視覺顏色主題 */
+:root {
+  --md-primary-fg-color: #004480;
+  --md-primary-fg-color--light: #0056a0;
+  --md-primary-fg-color--dark: #003366;
+  --md-accent-fg-color: #0066cc;
+}
+
+/* 背景色調整 - 淺色模式 */
+[data-md-color-scheme="default"] body {
+  background-color: #e8f2ff;
+  background-image: linear-gradient(135deg, #e8f2ff 0%, #d1e7ff 100%);
+}
+
+[data-md-color-scheme="default"] .md-main__inner {
+  background-color: transparent;
+  margin-bottom: 1rem;
+}
+
+/* 背景色調整 - 深色模式 */
+[data-md-color-scheme="slate"] body {
+  background-color: #0a1121;
+  background-image: linear-gradient(135deg, #0a1121 0%, #1a2332 100%);
+}
+
+[data-md-color-scheme="slate"] .md-main__inner {
+  background-color: transparent;
+  margin-bottom: 1rem;
+}
+
+/* 深色模式字體顏色調整 */
+[data-md-color-scheme="slate"] .md-content {
+  color: #d1d5db;
+}
+
+[data-md-color-scheme="slate"] .md-content h1,
+[data-md-color-scheme="slate"] .md-content h2,
+[data-md-color-scheme="slate"] .md-content h3,
+[data-md-color-scheme="slate"] .md-content h4,
+[data-md-color-scheme="slate"] .md-content h5,
+[data-md-color-scheme="slate"] .md-content h6 {
+  color: #e5e7eb;
+}
+
+[data-md-color-scheme="slate"] .md-content p,
+[data-md-color-scheme="slate"] .md-content li,
+[data-md-color-scheme="slate"] .md-content td {
+  color: #c9cdd4;
+}
+
+[data-md-color-scheme="slate"] .md-content a {
+  color: #60a5fa;
+}
+
+[data-md-color-scheme="slate"] .md-content a:hover {
+  color: #93c5fd;
+}
+
+.md-content {
+  background-color: transparent;
+}
+
+/* 5G 相關的現代化樣式 */
+.md-header {
+  background: linear-gradient(135deg, #004480 0%, #0056a0 100%);
+}
+
+/* 自定義 Logo */
+.md-header__button.md-logo {
+  padding: 0;
+  margin: 0.4rem;
+}
+
+.md-header__button.md-logo img {
+  height: 2rem;
+  width: auto;
+}
+
+.md-tabs {
+  background: linear-gradient(135deg, #004480 0%, #0056a0 100%);
+}
+
+/* 自定義按鈕樣式 */
+.md-button {
+  background: linear-gradient(135deg, #0056a0 0%, #004480 100%);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.md-button:hover {
+  background: linear-gradient(135deg, #004480 0%, #003366 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 68, 128, 0.3);
+}
+
+/* 5G 網路相關的圖示樣式 */
+.md-nav__icon {
+  filter: drop-shadow(0 2px 4px rgba(0, 68, 128, 0.2));
+}
+
+/* 圖片圓角效果 - 淺色模式 */
+[data-md-color-scheme="default"] .md-content img {
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 68, 128, 0.12);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid rgba(0, 68, 128, 0.08);
+}
+
+[data-md-color-scheme="default"] .md-content img:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 68, 128, 0.25);
+  border-color: rgba(0, 68, 128, 0.15);
+}
+
+/* 圖片圓角效果 - 深色模式 */
+[data-md-color-scheme="slate"] .md-content img {
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 68, 128, 0.4);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid rgba(0, 68, 128, 0.2);
+}
+
+[data-md-color-scheme="slate"] .md-content img:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 68, 128, 0.6);
+  border-color: rgba(0, 68, 128, 0.4);
+}
+
+/* Footer 樣式調整 - 淺色模式 */
+[data-md-color-scheme="default"] .md-footer {
+  background-color: #004480;
+  color: #ffffff;
+  border-top: 1px solid rgba(0, 68, 128, 0.15);
+}
+
+[data-md-color-scheme="default"] .md-footer-meta {
+  background-color: #003366;
+}
+
+/* Footer 樣式調整 - 深色模式 */
+[data-md-color-scheme="slate"] .md-footer {
+  background-color: #004480;
+  color: #ffffff;
+  border-top: 1px solid rgba(0, 68, 128, 0.3);
+}
+
+[data-md-color-scheme="slate"] .md-footer-meta {
+  background-color: #003366;
+}
+
+.md-footer__inner {
+  padding: 1.5rem 0;
+}
+
+.md-footer__link {
+  color: #ffffff;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.md-footer__link:hover {
+  opacity: 1;
+}
+
+/* 響應式設計 */
+@media screen and (max-width: 768px) {
+  .md-header__title {
+    font-size: 1.2rem;
+  }
+} 
