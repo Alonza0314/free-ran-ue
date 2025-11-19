@@ -200,6 +200,11 @@ body.show-footer-nav .md-footer .md-footer__inner {
   pointer-events: auto;
 }
 
+/* 確保內容區域有足夠底部空間，避免被按鈕遮擋 */
+.md-content {
+  padding-bottom: 80px;
+}
+
 .nav-btn {
   position: relative;
   display: flex;
