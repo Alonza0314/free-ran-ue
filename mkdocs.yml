@@ -14,6 +14,7 @@ nav:
   - 5G Core Book:
     - 中文:
       - 首頁 & 前言: doc-5g-core-book/zh/index.md
+      - 作者介紹: doc-5g-core-book/zh/author.md
       - Part I - 5G 核心網路的基礎與演進背景:
         - 第 1 章：從 4G 到 5G — 核心網架構的演變: doc-5g-core-book/zh/part1-history/chapter1.md
         - 第 2 章：5G 核心網 3GPP 角度總覽: doc-5g-core-book/zh/part1-history/chapter2.md
