@@ -18,3 +18,9 @@
     <p>在學習和研究 5G 的過程中，我發現許多初學者都面臨著同樣的困境：無從下手。因此，我決定整理自己的學習過程和實戰經驗，寫成這本書，希望幫助更多人快速進入 5G 的世界。</p>
   </div>
 </div>
+
+<div class="chapter-nav">
+  <a href="../part1-history/chapter1/" class="nav-btn nav-next" title="下一章：從 4G 到 5G — 核心網架構的演變">
+    <span class="arrow"></span>
+  </a>
+</div>
