@@ -76,7 +76,7 @@
 - **逐步解釋**：不只給指令，也說明為什麼要這樣做、背後對應到哪個網元或流程。
 
 <div class="chapter-nav">
-  <a href="part1-history/chapter1/" class="nav-btn nav-next" title="下一章：作者介紹">
+  <a href="author/" class="nav-btn nav-next" title="下一章：作者介紹">
     <span class="arrow"></span>
   </a>
 </div>
