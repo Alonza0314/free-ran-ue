@@ -11,6 +11,30 @@ nav:
   - Home: index.md
   - User Guide: doc-user-guide/index.md
   - Design Document: doc-design-document/index.md
+  - 5G Core Book:
+    - 中文:
+      - 首頁 & 前言: doc-5g-core-book/zh/index.md
+      - Part I - 5G 核心網路的基礎與演進背景:
+        - 第 1 章：從 4G 到 5G — 核心網架構的演變: doc-5g-core-book/zh/part1-history/chapter1.md
+        - 第 2 章：5G 核心網 3GPP 角度總覽: doc-5g-core-book/zh/part1-history/chapter2.md
+      - Part II - free5GC 全架構深度解析:
+        - 第 3 章：free5GC 整體架構與模組介紹: doc-5g-core-book/zh/part2-free5gc/chapter3.md
+        - 第 4 章：AMF 詳解: doc-5g-core-book/zh/part2-free5gc/chapter4.md
+        - 第 5 章：SMF、UPF 與使用者面流程: doc-5g-core-book/zh/part2-free5gc/chapter5.md
+        - 第 6 章：其他網路元件 (UDM/AUSF/PCF/CHF/NSSF/NEF/NRF/UDR): doc-5g-core-book/zh/part2-free5gc/chapter6.md
+        - 第 7 章：非 3GPP 接入（N3IWF/TNGF）: doc-5g-core-book/zh/part2-free5gc/chapter7.md
+      - Part III - free5GC 實戰部署與常見問題:
+        - 第 8 章：free5GC 部署實戰: doc-5g-core-book/zh/part3-deploy/chapter8.md
+        - 第 9 章：多節點 / 多 UPF 部署: doc-5g-core-book/zh/part3-deploy/chapter9.md
+        - 第 10 章：End-to-End 測試與流量驗證: doc-5g-core-book/zh/part3-deploy/chapter10.md
+      - Part IV - free-ran-ue 模擬器:
+        - 第 11 章：為什麼需要 RAN/UE 模擬器？: doc-5g-core-book/zh/part4-free-ran-ue/chapter11.md
+        - 第 12 章：free-ran-ue 的架構設計: doc-5g-core-book/zh/part4-free-ran-ue/chapter12.md
+        - 第 13 章：模擬器如何與 free5GC 整合: doc-5g-core-book/zh/part4-free-ran-ue/chapter13.md
+        - 第 14 章：NR-DC 實驗: doc-5g-core-book/zh/part4-free-ran-ue/chapter14.md
+      # - Part V - 專題研究與延伸議題:
+    - English:
+      - Home: doc-5g-core-book/en/index.md
   - Contributors: doc-contributors/index.md
 
 # Theme configuration
