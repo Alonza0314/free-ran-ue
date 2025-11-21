@@ -55,6 +55,9 @@ type RanUe struct {
 	n1Conn           net.Conn
 	dataPlaneAddress *net.UDPAddr
 
+	pduSessionEstablishmentCompleteChan chan struct{}
+	ueContextReleaseCompleteChan        chan struct{}
+
 	nrdcIndicator    bool
 	nrdcIndicatorMtx sync.Mutex
 }
@@ -66,12 +69,15 @@ func NewRanUe(n1Conn net.Conn, ranUeNgapIdGenerator *RanUeNgapIdGenerator) *RanU
 	}
 
 	return &RanUe{
-		amfUeNgapId: 1,
+		amfUeNgapId: -1,
 		ranUeNgapId: ranUeId,
 
 		mobileIdentity5GS: nasType.MobileIdentity5GS{},
 
 		n1Conn: n1Conn,
+
+		pduSessionEstablishmentCompleteChan: make(chan struct{}),
+		ueContextReleaseCompleteChan:        make(chan struct{}),
 
 		nrdcIndicator:    false,
 		nrdcIndicatorMtx: sync.Mutex{},
@@ -81,6 +87,8 @@ func NewRanUe(n1Conn net.Conn, ranUeNgapIdGenerator *RanUeNgapIdGenerator) *RanU
 func (r *RanUe) Release(ranUeNgapIdGenerator *RanUeNgapIdGenerator, teidGenerator *TeidGenerator) {
 	ranUeNgapIdGenerator.ReleaseRanUeId(r.ranUeNgapId)
 	teidGenerator.ReleaseTeid(r.dlTeid)
+	close(r.pduSessionEstablishmentCompleteChan)
+	close(r.ueContextReleaseCompleteChan)
 }
 
 func (r *RanUe) GetAmfUeId() int64 {
@@ -134,6 +142,14 @@ func (r *RanUe) SetDlTeid(dlTeid aper.OctetString) {
 
 func (r *RanUe) SetDataPlaneAddress(dataPlaneAddress *net.UDPAddr) {
 	r.dataPlaneAddress = dataPlaneAddress
+}
+
+func (r *RanUe) GetPduSessionEstablishmentCompleteChan() chan struct{} {
+	return r.pduSessionEstablishmentCompleteChan
+}
+
+func (r *RanUe) GetUeContextReleaseCompleteChan() chan struct{} {
+	return r.ueContextReleaseCompleteChan
 }
 
 func (r *RanUe) IsNrdcActivated() bool {
