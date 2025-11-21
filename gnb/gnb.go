@@ -506,23 +506,10 @@ func (g *Gnb) setupN1(ranUe *RanUe) error {
 
 	// pdu session establishment
 	ranUe.SetDlTeid(g.teidGenerator.AllocateTeid())
-	// pduSessionResourceSetupRequestTransfer := ngapType.PDUSessionResourceSetupRequestTransfer{}
 	if err := g.processUePduSessionEstablishment(ranUe); err != nil {
 		return err
 	}
 	time.Sleep(1 * time.Second)
-
-	// configure UE mapping
-	// for _, item := range pduSessionResourceSetupRequestTransfer.ProtocolIEs.List {
-	// 	switch item.Id.Value {
-	// 	case ngapType.ProtocolIEIDPDUSessionAggregateMaximumBitRate:
-	// 	case ngapType.ProtocolIEIDULNGUUPTNLInformation:
-	// 		ranUe.SetUlTeid(item.Value.ULNGUUPTNLInformation.GTPTunnel.GTPTEID.Value)
-	// 	case ngapType.ProtocolIEIDAdditionalULNGUUPTNLInformation:
-	// 	case ngapType.ProtocolIEIDPDUSessionType:
-	// 	case ngapType.ProtocolIEIDQosFlowSetupRequestList:
-	// 	}
-	// }
 
 	g.dlTeidToUe.Store(hex.EncodeToString(ranUe.GetDlTeid()), ranUe)
 	g.GtpLog.Debugf("Stored RAN UE %s with DL TEID %s to dlTeidToUe", ranUe.GetMobileIdentityIMSI(), hex.EncodeToString(ranUe.GetDlTeid()))
@@ -726,49 +713,7 @@ func (g *Gnb) processUeInitialization(ranUe *RanUe) error {
 	g.NgapLog.Tracef("Sent %d bytes of initial UE message to AMF", n)
 	g.NgapLog.Debugln("Sent initial UE message to AMF")
 
-	// receive nas authentication request from AMF and send to UE
-	// ngapNasAuthenticationRequestRaw := make([]byte, 1024)
-	// n, err = g.n2Conn.Read(ngapNasAuthenticationRequestRaw)
-	// if err != nil {
-	// 	return fmt.Errorf("error receive initial ue response from AMF: %v", err)
-	// }
-	// g.NgapLog.Tracef("Received %d bytes of NAS Authentication Request from AMF", n)
-	// g.NgapLog.Debugln("Receive NAS Authentication Request from AMF")
-
-	// ngapNasAuthenticationRequest, err := ngap.Decoder(ngapNasAuthenticationRequestRaw[:n])
-	// if err != nil {
-	// 	return fmt.Errorf("error decode nas authentication request from AMF: %v", err)
-	// }
-	// if ngapNasAuthenticationRequest.Present != ngapType.NGAPPDUPresentInitiatingMessage || ngapNasAuthenticationRequest.InitiatingMessage.ProcedureCode.Value != ngapType.ProcedureCodeDownlinkNASTransport {
-	// 	return fmt.Errorf("error NGAP nas authentication request: %+v", ngapNasAuthenticationRequest)
-	// }
-	// g.NgapLog.Tracef("NGAP nas authentication request: %+v", ngapNasAuthenticationRequest)
-
-	// var nasAuthenticationRequest []byte
-	// for _, ie := range ngapNasAuthenticationRequest.InitiatingMessage.Value.DownlinkNASTransport.ProtocolIEs.List {
-	// 	switch ie.Id.Value {
-	// 	case ngapType.ProtocolIEIDAMFUENGAPID:
-	// 		ranUe.SetAmfUeId(ie.Value.AMFUENGAPID.Value)
-	// 		g.NgapLog.Tracef("Set AMF UE ID: %d", ranUe.GetAmfUeId())
-	// 	case ngapType.ProtocolIEIDRANUENGAPID:
-	// 		ranUe.SetRanUeId(ie.Value.RANUENGAPID.Value)
-	// 		g.NgapLog.Tracef("Set RAN UE ID: %d", ranUe.GetRanUeId())
-	// 	case ngapType.ProtocolIEIDNASPDU:
-	// 		if ie.Value.NASPDU == nil {
-	// 			return fmt.Errorf("error NGAP nas authentication request: NASPDU is nil")
-	// 		}
-	// 		nasAuthenticationRequest = make([]byte, len(ie.Value.NASPDU.Value))
-	// 		copy(nasAuthenticationRequest, ie.Value.NASPDU.Value)
-	// 		g.NgapLog.Tracef("Get NASPDU: %+v", nasAuthenticationRequest)
-	// 	}
-	// }
-
-	// n, err = ranUe.GetN1Conn().Write(nasAuthenticationRequest)
-	// if err != nil {
-	// 	return fmt.Errorf("error send nas authentication request to UE: %v", err)
-	// }
-	// g.NasLog.Tracef("Sent %d bytes of NAS Authentication Request to UE", n)
-	// g.NasLog.Debugln("Send NAS Authentication Request to UE")
+	// wait dispatcher to receive nas authentication request from AMF and send to UE
 
 	// receive nas authentication response from UE and send to AMF
 	nasAuthenticationResponse := make([]byte, 1024)
@@ -792,44 +737,7 @@ func (g *Gnb) processUeInitialization(ranUe *RanUe) error {
 	g.NgapLog.Tracef("Sent %d bytes of uplink NAS transport to AMF", n)
 	g.NgapLog.Debugln("Sent uplink NAS transport to AMF")
 
-	// receive nas security mode command message from AMF and send to UE
-	// ngapNasSecurityModeCommandRaw := make([]byte, 1024)
-	// n, err = g.n2Conn.Read(ngapNasSecurityModeCommandRaw)
-	// if err != nil {
-	// 	return fmt.Errorf("error receive nas security mode command from AMF: %v", err)
-	// }
-	// g.NgapLog.Tracef("Received %d bytes of NAS Security Mode Command from AMF", n)
-	// g.NgapLog.Debugf("Receive NAS Security Mode Command from AMF")
-
-	// ngapNasSecurityModeCommand, err := ngap.Decoder(ngapNasSecurityModeCommandRaw[:n])
-	// if err != nil {
-	// 	return fmt.Errorf("error decode nas security mode command from AMF: %v", err)
-	// }
-	// if ngapNasSecurityModeCommand.Present != ngapType.NGAPPDUPresentInitiatingMessage || ngapNasSecurityModeCommand.InitiatingMessage.ProcedureCode.Value != ngapType.ProcedureCodeDownlinkNASTransport {
-	// 	return fmt.Errorf("error NGAP nas security mode command: %+v", ngapNasSecurityModeCommand)
-	// }
-	// g.NgapLog.Tracef("NGAP nas security mode command: %+v", ngapNasSecurityModeCommand)
-
-	// var nasSecurityModeCommand []byte
-	// for _, ie := range ngapNasSecurityModeCommand.InitiatingMessage.Value.DownlinkNASTransport.ProtocolIEs.List {
-	// 	switch ie.Id.Value {
-	// 	case ngapType.ProtocolIEIDAMFUENGAPID:
-	// 	case ngapType.ProtocolIEIDRANUENGAPID:
-	// 	case ngapType.ProtocolIEIDNASPDU:
-	// 		if ie.Value.NASPDU == nil {
-	// 			return fmt.Errorf("error NGAP nas security mode command: NASPDU is nil")
-	// 		}
-	// 		nasSecurityModeCommand = make([]byte, len(ie.Value.NASPDU.Value))
-	// 		copy(nasSecurityModeCommand, ie.Value.NASPDU.Value)
-	// 		g.NgapLog.Tracef("Get NASPDU: %+v", nasSecurityModeCommand)
-	// 	}
-	// }
-
-	// if n, err = ranUe.GetN1Conn().Write(nasSecurityModeCommand); err != nil {
-	// 	return fmt.Errorf("error send nas security mode command to UE: %v", err)
-	// }
-	// g.NasLog.Tracef("Sent %d bytes of NAS Security Mode Command to UE", n)
-	// g.NasLog.Debugln("Send NAS Security Mode Command to UE")
+	// wait dispatcher to receive nas security mode command message from AMF and send to UE
 
 	// receive nas security mode complete message from UE and send to AMF
 	nasSecurityModeComplete := make([]byte, 1024)
@@ -853,37 +761,7 @@ func (g *Gnb) processUeInitialization(ranUe *RanUe) error {
 	g.NgapLog.Tracef("Sent %d bytes of uplink NAS transport to AMF", n)
 	g.NgapLog.Debugln("Sent uplink NAS transport to AMF")
 
-	// receive ngap initial context setup request from AMF
-	// ngapInitialContextSetupRequestRaw := make([]byte, 1024)
-	// n, err = g.n2Conn.Read(ngapInitialContextSetupRequestRaw)
-	// if err != nil {
-	// 	return fmt.Errorf("error receive ngap initial context setup request from AMF: %v", err)
-	// }
-	// g.NgapLog.Tracef("Received %d bytes of NGAP Initial Context Setup Request from AMF", n)
-
-	// ngapInitialContextSetupRequest, err := ngap.Decoder(ngapInitialContextSetupRequestRaw[:n])
-	// if err != nil {
-	// 	return fmt.Errorf("error decode ngap initial context setup request from AMF: %v", err)
-	// }
-	// if ngapInitialContextSetupRequest.Present != ngapType.NGAPPDUPresentInitiatingMessage || ngapInitialContextSetupRequest.InitiatingMessage.ProcedureCode.Value != ngapType.ProcedureCodeInitialContextSetup {
-	// 	return fmt.Errorf("error ngap initial context setup request: no initial context setup request")
-	// }
-	// g.NgapLog.Tracef("NGAP Initial Context Setup Request: %+v", ngapInitialContextSetupRequest)
-	// g.NgapLog.Debugln("Receive NGAP Initial Context Setup Request from AMF")
-
-	// send ngap initial context setup response to AMF
-	// ngapInitialContextSetupResponse, err := getNgapInitialContextSetupResponse(ranUe.GetAmfUeId(), ranUe.GetRanUeId())
-	// if err != nil {
-	// 	return fmt.Errorf("error get ngap initial context setup response: %v", err)
-	// }
-	// g.NgapLog.Tracef("Get NGAP Initial Context Setup Response: %+v", ngapInitialContextSetupResponse)
-
-	// n, err = g.n2Conn.Write(ngapInitialContextSetupResponse)
-	// if err != nil {
-	// 	return fmt.Errorf("error send ngap initial context setup response to AMF: %v", err)
-	// }
-	// g.NgapLog.Tracef("Sent %d bytes of NGAP Initial Context Setup Response to AMF", n)
-	// g.NgapLog.Debugln("Send NGAP Initial Context Setup Response to AMF")
+	// wait dispatcher to receive ngap initial context setup request from AMF
 
 	// receive nas registration complete message from UE and send to AMF
 	nasRegistrationComplete := make([]byte, 1024)
@@ -907,23 +785,7 @@ func (g *Gnb) processUeInitialization(ranUe *RanUe) error {
 	g.NgapLog.Tracef("Sent %d bytes of uplink NAS transport to AMF", n)
 	g.NgapLog.Debugln("Send NAS Registration Complete to AMF")
 
-	// receive ue configuration update command message from AMF
-	// ueConfigurationUpdateCommandRaw := make([]byte, 1024)
-	// n, err = g.n2Conn.Read(ueConfigurationUpdateCommandRaw)
-	// if err != nil {
-	// 	return fmt.Errorf("error receive ue configuration update command from AMF: %v", err)
-	// }
-	// g.NgapLog.Tracef("Received %d bytes of UE Configuration Update Command from AMF", n)
-
-	// ueConfigurationUpdateCommand, err := ngap.Decoder(ueConfigurationUpdateCommandRaw[:n])
-	// if err != nil {
-	// 	return fmt.Errorf("error decode ue configuration update command from AMF: %v", err)
-	// }
-	// if ueConfigurationUpdateCommand.Present != ngapType.NGAPPDUPresentInitiatingMessage || ueConfigurationUpdateCommand.InitiatingMessage.ProcedureCode.Value != ngapType.ProcedureCodeDownlinkNASTransport {
-	// 	return fmt.Errorf("error ue configuration update command: no ue configuration update command")
-	// }
-	// g.NgapLog.Tracef("UE Configuration Update Command: %+v", ueConfigurationUpdateCommand)
-	// g.NgapLog.Debugln("Receive UE Configuration Update Command from AMF")
+	// wait dispatcher to receive ue configuration update command message from AMF
 
 	g.RanLog.Infof("UE %s initialized", ranUe.GetMobileIdentityIMSI())
 	return nil
@@ -954,77 +816,7 @@ func (g *Gnb) processUePduSessionEstablishment(ranUe *RanUe) error {
 	g.NgapLog.Tracef("Sent %d bytes of uplink NAS transport to AMF", n)
 	g.NgapLog.Debugln("Send PDU Session Establishment Request to AMF")
 
-	// receive ngap pdu session resource setup request from AMF
-	// ngapPduSessionResourceSetupRequestRaw := make([]byte, 1024)
-	// n, err = g.n2Conn.Read(ngapPduSessionResourceSetupRequestRaw)
-	// if err != nil {
-	// 	return fmt.Errorf("error receive ngap pdu session resource setup request from AMF: %v", err)
-	// }
-	// g.NgapLog.Tracef("Received %d bytes of NGAP PDU Session Resource Setup Request from AMF", n)
-	// g.NgapLog.Debugln("Receive NGAP PDU Session Resource Setup Request from AMF")
-
-	// ngapPduSessionResourceSetupRequest, err := ngap.Decoder(ngapPduSessionResourceSetupRequestRaw[:n])
-	// if err != nil {
-	// 	return fmt.Errorf("error decode ngap pdu session resource setup request from AMF: %v", err)
-	// }
-	// if ngapPduSessionResourceSetupRequest.Present != ngapType.NGAPPDUPresentInitiatingMessage || ngapPduSessionResourceSetupRequest.InitiatingMessage.ProcedureCode.Value != ngapType.ProcedureCodePDUSessionResourceSetup {
-	// 	return fmt.Errorf("error ngap pdu session resource setup request: no pdu session resource setup request")
-	// }
-	// g.NgapLog.Tracef("NGAP PDU Session Resource Setup Request: %+v", ngapPduSessionResourceSetupRequest)
-
-	// var nasPduSessionEstablishmentAccept []byte
-	// for _, ie := range ngapPduSessionResourceSetupRequest.InitiatingMessage.Value.PDUSessionResourceSetupRequest.ProtocolIEs.List {
-	// 	switch ie.Id.Value {
-	// 	case ngapType.ProtocolIEIDAMFUENGAPID:
-	// 	case ngapType.ProtocolIEIDRANUENGAPID:
-	// 	case ngapType.ProtocolIEIDPDUSessionResourceSetupListSUReq:
-	// 		for _, pduSessionResourceSetupItem := range ie.Value.PDUSessionResourceSetupListSUReq.List {
-	// 			nasPduSessionEstablishmentAccept = make([]byte, len(pduSessionResourceSetupItem.PDUSessionNASPDU.Value))
-	// 			copy(nasPduSessionEstablishmentAccept, pduSessionResourceSetupItem.PDUSessionNASPDU.Value)
-	// 			g.NgapLog.Tracef("Get NASPDU: %+v", nasPduSessionEstablishmentAccept)
-
-	// 			if err := aper.UnmarshalWithParams(pduSessionResourceSetupItem.PDUSessionResourceSetupRequestTransfer, pduSessionResourceSetupRequestTransfer, "valueExt"); err != nil {
-	// 				return fmt.Errorf("error unmarshal pdu session resource setup request transfer: %v", err)
-	// 			}
-	// 			g.NgapLog.Tracef("Get PDUSessionResourceSetupRequestTransfer: %+v", pduSessionResourceSetupRequestTransfer)
-	// 		}
-	// 	case ngapType.ProtocolIEIDUEAggregateMaximumBitRate:
-	// 	}
-	// }
-
-	// var qosFlowPerTNLInformationItem ngapType.QosFlowPerTNLInformationItem
-	// if ranUe.IsNrdcActivated() {
-	// 	if qosFlowPerTNLInformationItem, err = g.xnPduSessionResourceSetupRequestTransfer(ranUe.GetMobileIdentityIMSI(), ngapPduSessionResourceSetupRequestRaw[:n]); err != nil {
-	// 		g.XnLog.Warnf("Error xn pdu session resource setup request transfer: %v", err)
-	// 	}
-	// }
-
-	// n, err = ranUe.GetN1Conn().Write(nasPduSessionEstablishmentAccept)
-	// if err != nil {
-	// 	return fmt.Errorf("error send nas pdu session establishment accept to UE: %v", err)
-	// }
-	// g.NasLog.Tracef("Sent %d bytes of NAS PDU Session Establishment Accept to UE", n)
-	// g.NasLog.Debugln("Send NAS PDU Session Establishment Accept to UE")
-
-	// // send ngap pdu session resource setup response to AMF
-	// ngapPduSessionResourceSetupResponseTransfer, err := getPduSessionResourceSetupResponseTransfer(ranUe.GetDlTeid(), g.ranN3Ip, 1, g.staticNrdc, qosFlowPerTNLInformationItem)
-	// if err != nil {
-	// 	return fmt.Errorf("error get pdu session resource setup response transfer: %v", err)
-	// }
-	// g.NgapLog.Tracef("Get pdu session resource setup response transfer: %+v", ngapPduSessionResourceSetupResponseTransfer)
-
-	// ngapPduSessionResourceSetupResponse, err := getPduSessionResourceSetupResponse(ranUe.GetAmfUeId(), ranUe.GetRanUeId(), constant.PDU_SESSION_ID, ngapPduSessionResourceSetupResponseTransfer)
-	// if err != nil {
-	// 	return fmt.Errorf("error get pdu session resource setup response: %v", err)
-	// }
-	// g.NgapLog.Tracef("Get pdu session resource setup response: %+v", ngapPduSessionResourceSetupResponse)
-
-	// n, err = g.n2Conn.Write(ngapPduSessionResourceSetupResponse)
-	// if err != nil {
-	// 	return fmt.Errorf("error send pdu session resource setup response to AMF: %v", err)
-	// }
-	// g.NgapLog.Tracef("Sent %d bytes of pdu session resource setup response to AMF", n)
-	// g.NgapLog.Debugln("Send PDU Session Resource Setup Response to AMF")
+	// wait dispatcher to receive ngap pdu session resource setup request from AMF
 
 	<-ranUe.GetPduSessionEstablishmentCompleteChan()
 	g.NgapLog.Infof("UE %s PDU session establishment completed", ranUe.GetMobileIdentityIMSI())
@@ -1147,77 +939,7 @@ func (g *Gnb) processUeDeRegistration(ranUe *RanUe) error {
 	g.NgapLog.Tracef("Sent %d bytes of uplink NAS transport to AMF", n)
 	g.NgapLog.Debugln("Send UE deregistration request to AMF")
 
-	// receive ue deregistration accept from AMF
-	// ngapUeDeRegistrationAcceptRaw := make([]byte, 1024)
-	// n, err = g.n2Conn.Read(ngapUeDeRegistrationAcceptRaw)
-	// if err != nil {
-	// 	return fmt.Errorf("error receive ue deregistration accept from AMF: %v", err)
-	// }
-	// g.NgapLog.Tracef("Received %d bytes of UE deregistration accept from AMF", n)
-	// g.NgapLog.Debugln("Receive UE deregistration accept from AMF")
-
-	// ngapUeDeRegistrationAccept, err := ngap.Decoder(ngapUeDeRegistrationAcceptRaw[:n])
-	// if err != nil {
-	// 	return fmt.Errorf("error decode ue deregistration accept from AMF: %v", err)
-	// }
-	// if ngapUeDeRegistrationAccept.Present != ngapType.NGAPPDUPresentInitiatingMessage || ngapUeDeRegistrationAccept.InitiatingMessage.ProcedureCode.Value != ngapType.ProcedureCodeDownlinkNASTransport {
-	// 	return fmt.Errorf("error NGAP ue deregistration accept: %+v", ngapUeDeRegistrationAccept)
-	// }
-	// g.NgapLog.Tracef("NGAP UE deregistration accept: %+v", ngapUeDeRegistrationAccept)
-
-	// var nasUeDeRegistrationAccept []byte
-	// for _, ie := range ngapUeDeRegistrationAccept.InitiatingMessage.Value.DownlinkNASTransport.ProtocolIEs.List {
-	// 	switch ie.Id.Value {
-	// 	case ngapType.ProtocolIEIDAMFUENGAPID:
-	// 	case ngapType.ProtocolIEIDRANUENGAPID:
-	// 	case ngapType.ProtocolIEIDNASPDU:
-	// 		if ie.Value.NASPDU == nil {
-	// 			return fmt.Errorf("error NGAP ue deregistration accept: NASPDU is nil")
-	// 		}
-	// 		nasUeDeRegistrationAccept = make([]byte, len(ie.Value.NASPDU.Value))
-	// 		copy(nasUeDeRegistrationAccept, ie.Value.NASPDU.Value)
-	// 		g.NgapLog.Tracef("Get NASPDU: %+v", nasUeDeRegistrationAccept)
-	// 	}
-	// }
-
-	// n, err = ranUe.GetN1Conn().Write(nasUeDeRegistrationAccept)
-	// if err != nil {
-	// 	return fmt.Errorf("error send nas ue deregistration accept to UE: %v", err)
-	// }
-	// g.NasLog.Tracef("Sent %d bytes of NAS UE deregistration Accept to UE", n)
-	// g.NasLog.Debugln("Send NAS UE deregistration Accept to UE")
-
-	// receive ngap ue context release command from AMF
-	// ngapUeContextReleaseCommandRaw := make([]byte, 1024)
-	// n, err = g.n2Conn.Read(ngapUeContextReleaseCommandRaw)
-	// if err != nil {
-	// 	return fmt.Errorf("error receive ngap ue context release command from AMF: %v", err)
-	// }
-	// g.NgapLog.Tracef("Received %d bytes of NGAP UE Context Release Command from AMF", n)
-
-	// ngapUeContextReleaseCommand, err := ngap.Decoder(ngapUeContextReleaseCommandRaw[:n])
-	// if err != nil {
-	// 	return fmt.Errorf("error decode ngap ue context release command from AMF: %v", err)
-	// }
-	// if ngapUeContextReleaseCommand.Present != ngapType.NGAPPDUPresentInitiatingMessage || ngapUeContextReleaseCommand.InitiatingMessage.ProcedureCode.Value != ngapType.ProcedureCodeUEContextRelease {
-	// 	return fmt.Errorf("error ngap ue context release command: %+v", ngapUeContextReleaseCommand)
-	// }
-	// g.NgapLog.Tracef("NGAP UE Context Release Command: %+v", ngapUeContextReleaseCommand)
-	// g.NgapLog.Debugln("Receive NGAP UE Context Release Command from AMF")
-
-	// // send ngap ue context release complete to AMF
-	// ngapUeContextReleaseCompleteMessage, err := getNgapUeContextReleaseCompleteMessage(ranUe.GetAmfUeId(), ranUe.GetRanUeId(), []int64{constant.PDU_SESSION_ID}, g.plmnId, g.tai)
-	// if err != nil {
-	// 	return fmt.Errorf("error get ngap ue context release complete message: %v", err)
-	// }
-	// g.NgapLog.Tracef("Get NGAP UE Context Release Complete Message: %+v", ngapUeContextReleaseCompleteMessage)
-
-	// n, err = g.n2Conn.Write(ngapUeContextReleaseCompleteMessage)
-	// if err != nil {
-	// 	return fmt.Errorf("error send ngap ue context release complete message to AMF: %v", err)
-	// }
-	// g.NgapLog.Tracef("Sent %d bytes of NGAP UE Context Release Complete Message to AMF", n)
-	// g.NgapLog.Debugln("Send NGAP UE Context Release Complete Message to AMF")
+	// wait dispatcher to receive ue deregistration accept from AMF
 
 	<-ranUe.GetUeContextReleaseCompleteChan()
 	g.RanLog.Infoln("UE deregistration complete")
