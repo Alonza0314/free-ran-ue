@@ -308,7 +308,7 @@ func (u *Ue) connectToRanDataPlane() error {
 	u.ranDataPlaneConn = conn
 	u.RanLog.Debugln("Dial UDP to RAN data plane success")
 
-	_, err = u.ranDataPlaneConn.Write([]byte(constant.UE_DATA_PLANE_INITIAL_PACKET))
+	_, err = u.ranDataPlaneConn.Write([]byte(constant.UE_DATA_PLANE_INITIAL_PACKET + " " + constant.UE_IMSI_PREFIX + u.supi))
 	if err != nil {
 		return fmt.Errorf("error send initial packet: %+v", err)
 	}

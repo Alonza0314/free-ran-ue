@@ -82,13 +82,13 @@ type Gnb struct {
 	ranDataPlaneServer      *net.UDPConn
 	xnListener              *net.Listener
 
-	ranUeConns  sync.Map // ranUeId -> *RanUe
-	xnUeConns   sync.Map // *XnUe -> struct{}
-	dlTeidToUe  sync.Map // dlTeid -> *(Ran/Xn)Ue
-	addressToUe sync.Map // UDP address -> *(Ran/Xn)Ue
+	ranUeConns            sync.Map // ranUeId -> *RanUe
+	xnUeConns             sync.Map // *XnUe -> struct{}
+	dlTeidToUe            sync.Map // dlTeid -> *(Ran/Xn)Ue
+	addressToUe           sync.Map // UDP address -> *(Ran/Xn)Ue
+	imsiTodlTeidAndUeType sync.Map // imsi -> dlTeidAndUeType
 
-	gtpChannel             chan []byte
-	dlTeidAndUeTypeChannel chan dlTeidAndUeType
+	gtpChannel chan []byte
 
 	ranUeNgapIdGenerator *RanUeNgapIdGenerator
 	teidGenerator        *TeidGenerator
@@ -173,12 +173,11 @@ func NewGnb(config *model.GnbConfig, gnbLogger *logger.GnbLogger) *Gnb {
 			xnDialPort:   config.Gnb.XnInterface.XnDialPort,
 		},
 
-		ranUeConns:  sync.Map{},
-		xnUeConns:   sync.Map{},
-		dlTeidToUe:  sync.Map{},
-		addressToUe: sync.Map{},
-
-		dlTeidAndUeTypeChannel: make(chan dlTeidAndUeType),
+		ranUeConns:            sync.Map{},
+		xnUeConns:             sync.Map{},
+		dlTeidToUe:            sync.Map{},
+		addressToUe:           sync.Map{},
+		imsiTodlTeidAndUeType: sync.Map{},
 
 		ranUeNgapIdGenerator: NewRanUeNgapIdGenerator(),
 		teidGenerator:        NewTeidGenerator(),
@@ -514,11 +513,11 @@ func (g *Gnb) setupN1(ranUe *RanUe) error {
 	g.dlTeidToUe.Store(hex.EncodeToString(ranUe.GetDlTeid()), ranUe)
 	g.GtpLog.Debugf("Stored RAN UE %s with DL TEID %s to dlTeidToUe", ranUe.GetMobileIdentityIMSI(), hex.EncodeToString(ranUe.GetDlTeid()))
 
-	g.dlTeidAndUeTypeChannel <- dlTeidAndUeType{
+	g.imsiTodlTeidAndUeType.Store(ranUe.GetMobileIdentityIMSI(), dlTeidAndUeType{
 		dlTeid: ranUe.GetDlTeid(),
 		ueType: constant.UE_TYPE_RAN,
-	}
-	g.GtpLog.Debugf("Sent DL TEID %s to teidChannel", hex.EncodeToString(ranUe.GetDlTeid()))
+	})
+	g.GtpLog.Debugf("Sent DL TEID %s to imsiTodlTeidAndUeType", hex.EncodeToString(ranUe.GetDlTeid()))
 
 	g.RanLog.Infof("UE %s N1 setup complete", ranUe.GetMobileIdentityIMSI())
 	return nil
@@ -638,8 +637,8 @@ func (g *Gnb) startDataPlaneProcessor() {
 		g.RanLog.Tracef("Received %d bytes of data from UE: %+v", n, buffer[:n])
 		g.RanLog.Tracef("Received %d bytes of data from UE", n)
 
-		if string(buffer[:n]) == constant.UE_DATA_PLANE_INITIAL_PACKET {
-			go g.handleUeDataPlaneInitialPacket(ueAddress)
+		if n > len(constant.UE_DATA_PLANE_INITIAL_PACKET) && string(buffer[:len(constant.UE_DATA_PLANE_INITIAL_PACKET)]) == constant.UE_DATA_PLANE_INITIAL_PACKET {
+			go g.handleUeDataPlaneInitialPacket(ueAddress, string(buffer[len(constant.UE_DATA_PLANE_INITIAL_PACKET)+1:n]))
 		} else {
 			tmp := make([]byte, n)
 			copy(tmp, buffer[:n])
@@ -648,8 +647,15 @@ func (g *Gnb) startDataPlaneProcessor() {
 	}
 }
 
-func (g *Gnb) handleUeDataPlaneInitialPacket(ueAddress *net.UDPAddr) {
-	dlTeidAndUeType := <-g.dlTeidAndUeTypeChannel
+func (g *Gnb) handleUeDataPlaneInitialPacket(ueAddress *net.UDPAddr, imsi string) {
+	dlTeidAndUeTypeValue, exists := g.imsiTodlTeidAndUeType.Load(imsi)
+	if !exists {
+		g.RanLog.Warnf("No DL TEID and UE type found for IMSI: %s", imsi)
+		return
+	}
+	dlTeidAndUeType := dlTeidAndUeTypeValue.(dlTeidAndUeType)
+	g.imsiTodlTeidAndUeType.Delete(imsi)
+
 	ue, exists := g.dlTeidToUe.Load(hex.EncodeToString(dlTeidAndUeType.dlTeid))
 	if !exists {
 		g.RanLog.Warnf("No UE found for DL TEID: %s", hex.EncodeToString(dlTeidAndUeType.dlTeid))
