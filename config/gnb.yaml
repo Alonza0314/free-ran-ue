@@ -37,4 +37,4 @@ gnb:
     port: 40104 # API port for console usage
 
 logger:
-  level: "debug" # error, warn, info, debug, trace, test
+  level: "info" # error, warn, info, debug, trace, test
