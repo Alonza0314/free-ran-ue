@@ -82,10 +82,10 @@ type Gnb struct {
 	ranDataPlaneServer      *net.UDPConn
 	xnListener              *net.Listener
 
-	ranUeConns  sync.Map
-	xnUeConns   sync.Map
-	dlTeidToUe  sync.Map
-	addressToUe sync.Map
+	ranUeConns  sync.Map // ranUeId -> *RanUe
+	xnUeConns   sync.Map // *XnUe -> struct{}
+	dlTeidToUe  sync.Map // dlTeid -> *(Ran/Xn)Ue
+	addressToUe sync.Map // UDP address -> *(Ran/Xn)Ue
 
 	gtpChannel             chan []byte
 	dlTeidAndUeTypeChannel chan dlTeidAndUeType
@@ -305,7 +305,7 @@ func (g *Gnb) Start(ctx context.Context) error {
 				ranUe.ActivateNrdc()
 			}
 
-			g.ranUeConns.Store(ranUe, struct{}{})
+			g.ranUeConns.Store(ranUe.GetRanUeId(), ranUe)
 			go g.handleRanConnection(ctx, ranUe)
 		}
 	}()
@@ -355,7 +355,7 @@ func (g *Gnb) Stop() {
 				}
 			}
 			g.RanLog.Debugf("Closed UE connection from: %v", ranUe.GetN1Conn().RemoteAddr())
-		}(key.(*RanUe))
+		}(value.(*RanUe))
 		return true
 	})
 	wg.Wait()
@@ -614,7 +614,7 @@ func (g *Gnb) handleRanConnection(ctx context.Context, ranUe *RanUe) {
 		}
 		g.RanLog.Infof("Closed UE connection from: %v", ranUe.GetN1Conn().RemoteAddr())
 		ranUe.Release(g.ranUeNgapIdGenerator, g.teidGenerator)
-		g.ranUeConns.Delete(ranUe)
+		g.ranUeConns.Delete(ranUe.GetRanUeId())
 	}()
 
 	if err := g.setupN1(ranUe); err != nil {
@@ -1425,7 +1425,7 @@ func (g *Gnb) handleConsoleGnbInfo(c *gin.Context) {
 
 	ranUeList := []consoleModel.RanUeInfo{}
 	g.ranUeConns.Range(func(key, value any) bool {
-		ranUe := key.(*RanUe)
+		ranUe := value.(*RanUe)
 		ranUeList = append(ranUeList, consoleModel.RanUeInfo{
 			Imsi:          ranUe.GetMobileIdentityIMSI(),
 			NrdcIndicator: ranUe.IsNrdcActivated(),
@@ -1477,8 +1477,8 @@ func (g *Gnb) handleConsoleGnbUeNrdcModify(c *gin.Context) {
 
 	var ranUe *RanUe
 	g.ranUeConns.Range(func(key, value any) bool {
-		if key.(*RanUe).GetMobileIdentityIMSI() == request.Imsi {
-			ranUe = key.(*RanUe)
+		if value.(*RanUe).GetMobileIdentityIMSI() == request.Imsi {
+			ranUe = value.(*RanUe)
 		}
 		return true
 	})

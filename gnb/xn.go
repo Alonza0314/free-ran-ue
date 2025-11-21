@@ -191,11 +191,9 @@ func xnPduSessionResourceSetupProcessor(g *Gnb, conn net.Conn, imsi string, ngap
 	g.XnLog.Tracef("Sent %d bytes of DC QoS Flow per TNL Information to XN", n)
 	g.XnLog.Debugln("Send DC QoS Flow per TNL Information to XN")
 
-	// 先存储到 map，确保接收端能找到 UE
 	g.dlTeidToUe.Store(hex.EncodeToString(xnUe.GetDlTeid()), xnUe)
 	g.XnLog.Debugf("Stored XN UE %s with DL TEID %s to dlTeidToUe", xnUe.GetIMSI(), hex.EncodeToString(xnUe.GetDlTeid()))
 
-	// 然后通过 channel 通知接收端
 	g.dlTeidAndUeTypeChannel <- dlTeidAndUeType{
 		dlTeid: xnUe.GetDlTeid(),
 		ueType: constant.UE_TYPE_XN,

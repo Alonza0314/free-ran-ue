@@ -5,6 +5,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/Alonza0314/free-ran-ue/constant"
 	"github.com/free5gc/aper"
 	"github.com/free5gc/nas/nasType"
 )
@@ -92,7 +93,7 @@ func (r *RanUe) GetRanUeId() int64 {
 
 func (r *RanUe) GetMobileIdentityIMSI() string {
 	suci := r.mobileIdentity5GS.GetSUCI()
-	return fmt.Sprintf("imsi-%s%s%s", suci[7:10], suci[11:13], suci[20:])
+	return fmt.Sprintf("%s%s%s%s", constant.UE_IMSI_PREFIX, suci[7:10], suci[11:13], suci[20:])
 }
 
 func (r *RanUe) GetUlTeid() aper.OctetString {

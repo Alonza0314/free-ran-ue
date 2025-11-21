@@ -21,6 +21,7 @@ const (
 const (
 	UE_DATA_PLANE_INITIAL_PACKET = "initial packet"
 	UE_TUNNEL_UPDATE             = "tunnel update"
+	UE_IMSI_PREFIX               = "imsi-"
 )
 
 // for logger
