@@ -1,0 +1,151 @@
+{
+	"plmnID": "20893",
+	"ueId": "imsi-208930000000001",
+	"AuthenticationSubscription": {
+		"authenticationManagementField": "8000",
+		"authenticationMethod": "5G_AKA",
+		"milenage": {
+			"op": {
+				"encryptionAlgorithm": 0,
+				"encryptionKey": 0,
+				"opValue": ""
+			}
+		},
+		"opc": {
+			"encryptionAlgorithm": 0,
+			"encryptionKey": 0,
+			"opcValue": "8e27b6af0e692e750f32667a3b14605d"
+		},
+		"permanentKey": {
+			"encryptionAlgorithm": 0,
+			"encryptionKey": 0,
+			"permanentKeyValue": "8baf473f2f8fd09487cccbd7097c6862"
+		},
+		"sequenceNumber": "000000000023"
+	},
+	"AccessAndMobilitySubscriptionData": {
+		"gpsis": [
+			"msisdn-"
+		],
+		"nssai": {
+			"defaultSingleNssais": [
+				{
+					"sst": 1,
+					"sd": "010203",
+					"isDefault": true
+				}
+			]
+		},
+		"subscribedUeAmbr": {
+			"downlink": "2 Gbps",
+			"uplink": "1 Gbps"
+		}
+	},
+	"SessionManagementSubscriptionData": [
+		{
+			"singleNssai": {
+				"sst": 1,
+				"sd": "010203"
+			},
+			"dnnConfigurations": {
+				"internet": {
+					"sscModes": {
+						"defaultSscMode": "SSC_MODE_1",
+						"allowedSscModes": [
+							"SSC_MODE_2",
+							"SSC_MODE_3"
+						]
+					},
+					"pduSessionTypes": {
+						"defaultSessionType": "IPV4",
+						"allowedSessionTypes": [
+							"IPV4"
+						]
+					},
+					"sessionAmbr": {
+						"uplink": "200 Mbps",
+						"downlink": "100 Mbps"
+					},
+					"5gQosProfile": {
+						"5qi": 9,
+						"arp": {
+							"priorityLevel": 8
+						},
+						"priorityLevel": 8
+					}
+				}
+			}
+		}
+	],
+	"SmfSelectionSubscriptionData": {
+		"subscribedSnssaiInfos": {
+			"01010203": {
+				"dnnInfos": [
+					{
+						"dnn": "internet"
+					}
+				]
+			}
+		}
+	},
+	"AmPolicyData": {
+		"subscCats": [
+			"free5gc"
+		]
+	},
+	"SmPolicyData": {
+		"smPolicySnssaiData": {
+			"01010203": {
+				"snssai": {
+					"sst": 1,
+					"sd": "010203"
+				},
+				"smPolicyDnnData": {
+					"internet": {
+						"dnn": "internet"
+					}
+				}
+			}
+		}
+	},
+	"FlowRules": [
+		{
+			"filter": "1.1.1.1/32",
+			"precedence": 128,
+			"snssai": "01010203",
+			"dnn": "internet",
+			"qosRef": 1
+		}
+	],
+	"QosFlows": [
+		{
+			"snssai": "01010203",
+			"dnn": "internet",
+			"qosRef": 1,
+			"5qi": 8,
+			"mbrUL": "208 Mbps",
+			"mbrDL": "208 Mbps",
+			"gbrUL": "108 Mbps",
+			"gbrDL": "108 Mbps"
+		}
+	],
+	"ChargingDatas": [
+		{
+			"snssai": "01010203",
+			"dnn": "",
+			"filter": "",
+			"chargingMethod": "Offline",
+			"quota": "100000",
+			"unitCost": "1"
+		},
+		{
+			"snssai": "01010203",
+			"dnn": "internet",
+			"qosRef": 1,
+			"filter": "1.1.1.1/32",
+			"chargingMethod": "Offline",
+			"quota": "100000",
+			"unitCost": "1"
+		}
+	]
+}

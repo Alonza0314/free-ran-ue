@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 
@@ -29,6 +31,8 @@ func init() {
 	if err := ueCmd.MarkFlagRequired("config"); err != nil {
 		panic(err)
 	}
+
+	ueCmd.Flags().IntP("num", "n", 1, "number of UEs")
 	rootCmd.AddCommand(ueCmd)
 }
 
@@ -43,6 +47,11 @@ func ueFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
+	num, err := cmd.Flags().GetInt("num")
+	if err != nil {
+		panic(err)
+	}
+
 	ueConfig := model.UeConfig{}
 	if err := util.LoadFromYaml(ueConfigFilePath, &ueConfig); err != nil {
 		panic(err)
@@ -52,27 +61,46 @@ func ueFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	logger := logger.NewUeLogger(loggergoUtil.LogLevelString(ueConfig.Logger.Level), "", true)
-
-	ue := ue.NewUe(&ueConfig, &logger)
-	if ue == nil {
-		return
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	wg, ues := sync.WaitGroup{}, make([]*ue.Ue, 0, num)
 
-	wg := sync.WaitGroup{}
+	defer func() {
+		cancel()
+		wg.Wait()
 
-	if err := ue.Start(ctx, &wg); err != nil {
-		return
+		for _, ue := range ues {
+			ue.Stop()
+		}
+	}()
+
+	baseMsinInt, err := strconv.Atoi(ueConfig.Ue.Msin)
+	if err != nil {
+		panic(err)
 	}
-	defer ue.Stop()
+	baseUeTunnelDevice := ueConfig.Ue.UeTunnelDevice
+
+	for i := 0; i < num; i += 1 {
+		updateUeConfig(&ueConfig, baseMsinInt, baseUeTunnelDevice, i)
+
+		logger := logger.NewUeLogger(loggergoUtil.LogLevelString(ueConfig.Logger.Level), "", true)
+		ue := ue.NewUe(&ueConfig, &logger)
+		if ue == nil {
+			return
+		}
+
+		if err := ue.Start(ctx, &wg); err != nil {
+			return
+		}
+
+		ues = append(ues, ue)
+	}
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	<-sigCh
+}
 
-	cancel()
-	wg.Wait()
+func updateUeConfig(ueConfig *model.UeConfig, baseMsinInt int, baseUeTunnelDevice string, num int) {
+	ueConfig.Ue.Msin = fmt.Sprintf("%010d", baseMsinInt+num)
+	ueConfig.Ue.UeTunnelDevice = fmt.Sprintf("%s%d", baseUeTunnelDevice, num)
 }

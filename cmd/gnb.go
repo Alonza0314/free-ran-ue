@@ -45,15 +45,14 @@ func gnbFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	logger := logger.NewGnbLogger(loggergoUtil.LogLevelString(gnbConfig.Logger.Level), "", true)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
+	logger := logger.NewGnbLogger(loggergoUtil.LogLevelString(gnbConfig.Logger.Level), "", true)
 	gnb := gnb.NewGnb(&gnbConfig, &logger)
 	if gnb == nil {
 		return
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	if err := gnb.Start(ctx); err != nil {
 		return
