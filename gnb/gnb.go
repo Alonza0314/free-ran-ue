@@ -866,62 +866,6 @@ func (g *Gnb) processUePduSessionModifyIndication(ranUe *RanUe) error {
 	g.NgapLog.Debugln("Send PDU Session Modify Indication to AMF")
 
 	// wait dispatcher to receive ngap pdu session resource setup request from AMF
-	// ngapPduSessionResourceModifyConfirmRaw := make([]byte, 1024)
-	// n, err = g.n2Conn.Read(ngapPduSessionResourceModifyConfirmRaw)
-	// if err != nil {
-	// 	return fmt.Errorf("error receive ngap pdu session resource modify confirm from AMF: %v", err)
-	// }
-	// g.NgapLog.Tracef("Received %d bytes of NGAP PDU Session Resource Modify Confirm from AMF", n)
-	// g.NgapLog.Debugln("Receive NGAP PDU Session Resource Modify Confirm from AMF")
-
-	// ngapPduSessionResourceModifyConfirm, err := ngap.Decoder(ngapPduSessionResourceModifyConfirmRaw[:n])
-	// if err != nil {
-	// 	return fmt.Errorf("error decode ngap pdu session resource modify confirm from AMF: %v", err)
-	// }
-	// if ngapPduSessionResourceModifyConfirm.Present != ngapType.NGAPPDUPresentSuccessfulOutcome || ngapPduSessionResourceModifyConfirm.SuccessfulOutcome.ProcedureCode.Value != ngapType.ProcedureCodePDUSessionResourceModifyIndication {
-	// 	return fmt.Errorf("error ngap pdu session resource modify confirm: no pdu session resource modify confirm")
-	// }
-	// g.NgapLog.Tracef("NGAP PDU Session Resource Modify Confirm: %+v", ngapPduSessionResourceModifyConfirm)
-
-	// check successful outcome
-	// for _, ie := range ngapPduSessionResourceModifyConfirm.SuccessfulOutcome.Value.PDUSessionResourceModifyConfirm.ProtocolIEs.List {
-	// 	switch ie.Id.Value {
-	// 	case ngapType.ProtocolIEIDAMFUENGAPID:
-	// 	case ngapType.ProtocolIEIDRANUENGAPID:
-	// 	case ngapType.ProtocolIEIDPDUSessionResourceModifyListModCfm:
-	// 		g.NgapLog.Infoln("PDU session modify indication successful")
-	// 	case ngapType.ProtocolIEIDPDUSessionResourceFailedToModifyListModCfm:
-	// 		return fmt.Errorf("error ngap pdu session resource modify confirm: pdu session resource modify failed")
-	// 	}
-	// }
-
-	// send confirm to Xm for update xnUE ULTEID
-	// if !ranUe.IsNrdcActivated() {
-	// 	if _, err = g.xnPduSessionResourceModifyConfirm(ranUe.GetMobileIdentityIMSI(), ngapPduSessionResourceModifyConfirmRaw[:n]); err != nil {
-	// 		g.XnLog.Errorf("Error xn pdu session resource modify confirm: %v", err)
-	// 		return fmt.Errorf("error xn pdu session resource modify confirm: %v", err)
-	// 	}
-	// 	g.XnLog.Debugln("XN PDU Session Resource Modify Confirm sent")
-	// }
-
-	// send modify message to UE
-	// modifyMessage := []byte(constant.UE_TUNNEL_UPDATE)
-
-	// n, err = ranUe.GetN1Conn().Write(modifyMessage)
-	// if err != nil {
-	// 	return fmt.Errorf("error send modify message to UE: %v", err)
-	// }
-	// g.NasLog.Tracef("Sent %d bytes of modify message to UE", n)
-	// g.NasLog.Debugln("Send Modify Message to UE")
-
-	// update ranUe NRDC status
-	// if ranUe.IsNrdcActivated() {
-	// 	ranUe.DeactivateNrdc()
-	// 	g.NgapLog.Infof("UE %s NRDC deactivated", ranUe.GetMobileIdentityIMSI())
-	// } else {
-	// 	ranUe.ActivateNrdc()
-	// 	g.NgapLog.Infof("UE %s NRDC activated", ranUe.GetMobileIdentityIMSI())
-	// }
 
 	<-ranUe.GetPduSessionModifyIndicationCompleteChan()
 	g.NgapLog.Infof("UE %s PDU session modify indication completed", ranUe.GetMobileIdentityIMSI())
