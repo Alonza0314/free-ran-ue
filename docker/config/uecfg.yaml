@@ -38,7 +38,7 @@ ue:
   nrdc:
     enable: false
 
-  ueTunnelDevice: "ueTun0"
+  ueTunnelDevice: "ueTun"
 
 logger:
   level: "info" # error, warn, info, debug, trace

@@ -43,7 +43,7 @@ ue:
       port: 31414
     dcLocalDataPlaneIp: "10.0.3.2"
 
-  ueTunnelDevice: "ueTun0"
+  ueTunnelDevice: "ueTun"
 
 logger:
   level: "info" # error, warn, info, debug, trace
