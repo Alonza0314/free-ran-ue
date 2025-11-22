@@ -1,5 +1,15 @@
 #!/bin/bash
 
+########################################################
+# Script for local test of integration test
+#
+# Usage:
+#   ./test.sh [basic | dc-static | dc-dynamic | ulcl | all]
+#
+# Description:
+#   This script is used to test the functionality of free-ran-ue.
+########################################################
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 INTEGRATION_TEST_SCRIPT="${SCRIPT_DIR}/integration-test.sh"
