@@ -55,8 +55,9 @@ type RanUe struct {
 	n1Conn           net.Conn
 	dataPlaneAddress *net.UDPAddr
 
-	pduSessionEstablishmentCompleteChan chan struct{}
-	ueContextReleaseCompleteChan        chan struct{}
+	pduSessionEstablishmentCompleteChan    chan struct{}
+	ueContextReleaseCompleteChan           chan struct{}
+	pduSessionModifyIndicationCompleteChan chan struct{}
 
 	nrdcIndicator    bool
 	nrdcIndicatorMtx sync.Mutex
@@ -76,8 +77,9 @@ func NewRanUe(n1Conn net.Conn, ranUeNgapIdGenerator *RanUeNgapIdGenerator) *RanU
 
 		n1Conn: n1Conn,
 
-		pduSessionEstablishmentCompleteChan: make(chan struct{}),
-		ueContextReleaseCompleteChan:        make(chan struct{}),
+		pduSessionEstablishmentCompleteChan:    make(chan struct{}),
+		ueContextReleaseCompleteChan:           make(chan struct{}),
+		pduSessionModifyIndicationCompleteChan: make(chan struct{}),
 
 		nrdcIndicator:    false,
 		nrdcIndicatorMtx: sync.Mutex{},
@@ -89,6 +91,7 @@ func (r *RanUe) Release(ranUeNgapIdGenerator *RanUeNgapIdGenerator, teidGenerato
 	teidGenerator.ReleaseTeid(r.dlTeid)
 	close(r.pduSessionEstablishmentCompleteChan)
 	close(r.ueContextReleaseCompleteChan)
+	close(r.pduSessionModifyIndicationCompleteChan)
 }
 
 func (r *RanUe) GetAmfUeId() int64 {
@@ -150,6 +153,10 @@ func (r *RanUe) GetPduSessionEstablishmentCompleteChan() chan struct{} {
 
 func (r *RanUe) GetUeContextReleaseCompleteChan() chan struct{} {
 	return r.ueContextReleaseCompleteChan
+}
+
+func (r *RanUe) GetPduSessionModifyIndicationCompleteChan() chan struct{} {
+	return r.pduSessionModifyIndicationCompleteChan
 }
 
 func (r *RanUe) IsNrdcActivated() bool {

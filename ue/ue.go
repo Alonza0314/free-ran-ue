@@ -322,7 +322,7 @@ func (u *Ue) connectToRanDataPlane() error {
 		u.dcRanDataPlaneConn = conn
 		u.RanLog.Debugln("Dial UDP to DC RAN data plane success")
 
-		_, err = u.dcRanDataPlaneConn.Write([]byte(constant.UE_DATA_PLANE_INITIAL_PACKET))
+		_, err = u.dcRanDataPlaneConn.Write([]byte(constant.UE_DATA_PLANE_INITIAL_PACKET + " " + constant.UE_IMSI_PREFIX + u.supi))
 		if err != nil {
 			return fmt.Errorf("error send initial packet: %+v", err)
 		}
@@ -848,7 +848,7 @@ func (u *Ue) updateDataPlane() {
 		}
 		u.dcRanDataPlaneConn = conn
 
-		_, err = u.dcRanDataPlaneConn.Write([]byte(constant.UE_DATA_PLANE_INITIAL_PACKET))
+		_, err = u.dcRanDataPlaneConn.Write([]byte(constant.UE_DATA_PLANE_INITIAL_PACKET + " " + constant.UE_IMSI_PREFIX + u.supi))
 		if err != nil {
 			u.TunLog.Errorf("Error send initial packet: %+v", err)
 			return

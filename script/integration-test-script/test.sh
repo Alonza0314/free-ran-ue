@@ -4,7 +4,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 INTEGRATION_TEST_SCRIPT="${SCRIPT_DIR}/integration-test.sh"
 
-
+Usage() {
+    echo "Usage: $0 [basic | dc-static | dc-dynamic | ulcl | all]"
+    exit 1
+}
 
 main() {
     case $1 in
@@ -32,7 +35,7 @@ main() {
                 exit 1
             fi
         ;;
-        *)
+        "all")
             # Run test basic
             if ! $INTEGRATION_TEST_SCRIPT basic; then
                 echo "Failed to run test basic!"
@@ -58,6 +61,10 @@ main() {
             fi
 
             echo "All tests passed!"
+        ;;
+        *)
+            Usage
+            exit 1
         ;;
     esac
 }
