@@ -4,6 +4,12 @@ import "net/http"
 
 type UeType string
 
+// for cmd
+const (
+	BASIC_UE_NUM            = 1
+	BASIC_UE_MAX_CONCURRENT = 10
+)
+
 // for RAN
 const (
 	NGAP_PPID uint32 = 0x3c000000

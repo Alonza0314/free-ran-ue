@@ -9,6 +9,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/Alonza0314/free-ran-ue/constant"
 	"github.com/Alonza0314/free-ran-ue/logger"
 	"github.com/Alonza0314/free-ran-ue/model"
 	"github.com/Alonza0314/free-ran-ue/ue"
@@ -32,7 +33,8 @@ func init() {
 		panic(err)
 	}
 
-	ueCmd.Flags().IntP("num", "n", 1, "number of UEs")
+	ueCmd.Flags().IntP("num", "n", constant.BASIC_UE_NUM, "number of UEs")
+	ueCmd.Flags().IntP("concurrent", "p", constant.BASIC_UE_MAX_CONCURRENT, "max concurrent UEs to start simultaneously")
 	rootCmd.AddCommand(ueCmd)
 }
 
@@ -52,6 +54,11 @@ func ueFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
+	maxConcurrent, err := cmd.Flags().GetInt("concurrent")
+	if err != nil {
+		panic(err)
+	}
+
 	ueConfig := model.UeConfig{}
 	if err := util.LoadFromYaml(ueConfigFilePath, &ueConfig); err != nil {
 		panic(err)
@@ -62,15 +69,24 @@ func ueFunc(cmd *cobra.Command, args []string) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	wg, ues := sync.WaitGroup{}, make([]*ue.Ue, 0, num)
+	wg, startStopWg, ues, uesMtx, errChan, semaphore := sync.WaitGroup{}, sync.WaitGroup{}, make([]*ue.Ue, 0, num), sync.Mutex{}, make(chan error, num), make(chan struct{}, maxConcurrent)
 
 	defer func() {
 		cancel()
 		wg.Wait()
 
-		for _, ue := range ues {
-			ue.Stop()
+		for _, u := range ues {
+			startStopWg.Add(1)
+			go func(ueInstance *ue.Ue) {
+				defer startStopWg.Done()
+
+				semaphore <- struct{}{}
+				defer func() { <-semaphore }()
+
+				ueInstance.Stop()
+			}(u)
 		}
+		startStopWg.Wait()
 	}()
 
 	baseMsinInt, err := strconv.Atoi(ueConfig.Ue.Msin)
@@ -80,19 +96,38 @@ func ueFunc(cmd *cobra.Command, args []string) {
 	baseUeTunnelDevice := ueConfig.Ue.UeTunnelDevice
 
 	for i := 0; i < num; i += 1 {
-		updateUeConfig(&ueConfig, baseMsinInt, baseUeTunnelDevice, i)
+		startStopWg.Add(1)
+		go func(index int) {
+			defer startStopWg.Done()
 
-		logger, ueConfigCopy := logger.NewUeLogger(loggergoUtil.LogLevelString(ueConfig.Logger.Level), "", true), ueConfig
-		ue := ue.NewUe(&ueConfigCopy, &logger)
-		if ue == nil {
-			return
-		}
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
 
-		if err := ue.Start(ctx, &wg); err != nil {
-			return
-		}
+			ueConfigCopy := ueConfig
+			updateUeConfig(&ueConfigCopy, baseMsinInt, baseUeTunnelDevice, index)
 
-		ues = append(ues, ue)
+			logger := logger.NewUeLogger(loggergoUtil.LogLevelString(ueConfigCopy.Logger.Level), "", true)
+			ue := ue.NewUe(&ueConfigCopy, &logger)
+			if ue == nil {
+				errChan <- fmt.Errorf("error creating UE %d", index)
+				return
+			}
+
+			if err := ue.Start(ctx, &wg); err != nil {
+				errChan <- fmt.Errorf("error starting UE %d: %v", index, err)
+				return
+			}
+
+			uesMtx.Lock()
+			ues = append(ues, ue)
+			uesMtx.Unlock()
+		}(i)
+	}
+
+	startStopWg.Wait()
+	close(errChan)
+	for err := range errChan {
+		loggergo.Error("UE", err.Error())
 	}
 
 	sigCh := make(chan os.Signal, 1)
