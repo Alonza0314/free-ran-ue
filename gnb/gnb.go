@@ -501,14 +501,12 @@ func (g *Gnb) setupN1(ranUe *RanUe) error {
 	if err := g.processUeInitialization(ranUe); err != nil {
 		return fmt.Errorf("error process ue initialization: %v", err)
 	}
-	time.Sleep(1 * time.Second)
 
 	// pdu session establishment
 	ranUe.SetDlTeid(g.teidGenerator.AllocateTeid())
 	if err := g.processUePduSessionEstablishment(ranUe); err != nil {
 		return err
 	}
-	time.Sleep(1 * time.Second)
 
 	g.dlTeidToUe.Store(hex.EncodeToString(ranUe.GetDlTeid()), ranUe)
 	g.GtpLog.Debugf("Stored RAN UE %s with DL TEID %s to dlTeidToUe", ranUe.GetMobileIdentityIMSI(), hex.EncodeToString(ranUe.GetDlTeid()))
@@ -648,21 +646,30 @@ func (g *Gnb) startDataPlaneProcessor() {
 }
 
 func (g *Gnb) handleUeDataPlaneInitialPacket(ueAddress *net.UDPAddr, imsi string) {
-	dlTeidAndUeTypeValue, exists := g.imsiTodlTeidAndUeType.Load(imsi)
-	if !exists {
-		g.RanLog.Warnf("No DL TEID and UE type found for IMSI: %s", imsi)
-		return
+	var dlTeidAndUeTypeInstance dlTeidAndUeType
+	for try := 0; ; try += 1 {
+		dlTeidAndUeTypeValue, exists := g.imsiTodlTeidAndUeType.Load(imsi)
+		if !exists {
+			if try == 100 {
+				g.RanLog.Errorf("No DL TEID and UE type found for IMSI: %s", imsi)
+				return
+			}
+			time.Sleep(100 * time.Millisecond)
+		} else {
+			dlTeidAndUeTypeInstance = dlTeidAndUeTypeValue.(dlTeidAndUeType)
+			break
+		}
 	}
-	dlTeidAndUeType := dlTeidAndUeTypeValue.(dlTeidAndUeType)
+
 	g.imsiTodlTeidAndUeType.Delete(imsi)
 
-	ue, exists := g.dlTeidToUe.Load(hex.EncodeToString(dlTeidAndUeType.dlTeid))
+	ue, exists := g.dlTeidToUe.Load(hex.EncodeToString(dlTeidAndUeTypeInstance.dlTeid))
 	if !exists {
-		g.RanLog.Warnf("No UE found for DL TEID: %s", hex.EncodeToString(dlTeidAndUeType.dlTeid))
+		g.RanLog.Warnf("No UE found for DL TEID: %s", hex.EncodeToString(dlTeidAndUeTypeInstance.dlTeid))
 		return
 	}
 
-	switch dlTeidAndUeType.ueType {
+	switch dlTeidAndUeTypeInstance.ueType {
 	case constant.UE_TYPE_RAN:
 		ue.(*RanUe).SetDataPlaneAddress(ueAddress)
 		g.addressToUe.Store(ueAddress.String(), ue)

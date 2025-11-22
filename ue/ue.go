@@ -207,7 +207,6 @@ func (u *Ue) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 		return err
 	}
-	time.Sleep(1 * time.Second)
 
 	if err := u.processPduSessionEstablishment(); err != nil {
 		u.UeLog.Errorf("Error processing PDU session establishment: %v", err)
@@ -216,7 +215,6 @@ func (u *Ue) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 		return err
 	}
-	time.Sleep(1 * time.Second)
 
 	if err := u.connectToRanDataPlane(); err != nil {
 		u.UeLog.Errorf("Error connecting to RAN data plane: %v", err)

@@ -82,8 +82,8 @@ func ueFunc(cmd *cobra.Command, args []string) {
 	for i := 0; i < num; i += 1 {
 		updateUeConfig(&ueConfig, baseMsinInt, baseUeTunnelDevice, i)
 
-		logger := logger.NewUeLogger(loggergoUtil.LogLevelString(ueConfig.Logger.Level), "", true)
-		ue := ue.NewUe(&ueConfig, &logger)
+		logger, ueConfigCopy := logger.NewUeLogger(loggergoUtil.LogLevelString(ueConfig.Logger.Level), "", true), ueConfig
+		ue := ue.NewUe(&ueConfigCopy, &logger)
 		if ue == nil {
 			return
 		}
