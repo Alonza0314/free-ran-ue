@@ -15,6 +15,8 @@ free-ran-ue also provides insertion scripts under the `script/10k-test-script` d
 ./script/10k-test-script/insert-subscribors.sh 1000 # here we use 1000 UEs as an example## UE Command Usage
 ```
 
+## Start Multiple UEs
+
 The `ue` command provides parameters for launching multiple UEs at once:
 
 ```bash
