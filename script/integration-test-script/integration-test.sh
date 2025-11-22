@@ -40,6 +40,7 @@ start_docker_compose() {
         echo "Failed to start docker compose!"
         return 1
     fi
+    sleep 2
 
     docker ps -a
     return 0

@@ -38,7 +38,7 @@ ue:
   nrdc:
     enable: false # Enable NRDC
 
-  ueTunnelDevice: "ueTun0" # UE Tunnel Device Name
+  ueTunnelDevice: "ueTun" # UE Tunnel Device Name
 
 logger:
   level: "info" # error, warn, info, debug, trace

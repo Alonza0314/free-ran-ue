@@ -5,6 +5,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/Alonza0314/free-ran-ue/constant"
 	"github.com/free5gc/aper"
 	"github.com/free5gc/nas/nasType"
 )
@@ -54,6 +55,10 @@ type RanUe struct {
 	n1Conn           net.Conn
 	dataPlaneAddress *net.UDPAddr
 
+	pduSessionEstablishmentCompleteChan    chan struct{}
+	ueContextReleaseCompleteChan           chan struct{}
+	pduSessionModifyIndicationCompleteChan chan struct{}
+
 	nrdcIndicator    bool
 	nrdcIndicatorMtx sync.Mutex
 }
@@ -65,12 +70,16 @@ func NewRanUe(n1Conn net.Conn, ranUeNgapIdGenerator *RanUeNgapIdGenerator) *RanU
 	}
 
 	return &RanUe{
-		amfUeNgapId: 1,
+		amfUeNgapId: -1,
 		ranUeNgapId: ranUeId,
 
 		mobileIdentity5GS: nasType.MobileIdentity5GS{},
 
 		n1Conn: n1Conn,
+
+		pduSessionEstablishmentCompleteChan:    make(chan struct{}),
+		ueContextReleaseCompleteChan:           make(chan struct{}),
+		pduSessionModifyIndicationCompleteChan: make(chan struct{}),
 
 		nrdcIndicator:    false,
 		nrdcIndicatorMtx: sync.Mutex{},
@@ -80,6 +89,9 @@ func NewRanUe(n1Conn net.Conn, ranUeNgapIdGenerator *RanUeNgapIdGenerator) *RanU
 func (r *RanUe) Release(ranUeNgapIdGenerator *RanUeNgapIdGenerator, teidGenerator *TeidGenerator) {
 	ranUeNgapIdGenerator.ReleaseRanUeId(r.ranUeNgapId)
 	teidGenerator.ReleaseTeid(r.dlTeid)
+	close(r.pduSessionEstablishmentCompleteChan)
+	close(r.ueContextReleaseCompleteChan)
+	close(r.pduSessionModifyIndicationCompleteChan)
 }
 
 func (r *RanUe) GetAmfUeId() int64 {
@@ -92,7 +104,7 @@ func (r *RanUe) GetRanUeId() int64 {
 
 func (r *RanUe) GetMobileIdentityIMSI() string {
 	suci := r.mobileIdentity5GS.GetSUCI()
-	return fmt.Sprintf("imsi-%s%s%s", suci[7:10], suci[11:13], suci[20:])
+	return fmt.Sprintf("%s%s%s%s", constant.UE_IMSI_PREFIX, suci[7:10], suci[11:13], suci[20:])
 }
 
 func (r *RanUe) GetUlTeid() aper.OctetString {
@@ -133,6 +145,18 @@ func (r *RanUe) SetDlTeid(dlTeid aper.OctetString) {
 
 func (r *RanUe) SetDataPlaneAddress(dataPlaneAddress *net.UDPAddr) {
 	r.dataPlaneAddress = dataPlaneAddress
+}
+
+func (r *RanUe) GetPduSessionEstablishmentCompleteChan() chan struct{} {
+	return r.pduSessionEstablishmentCompleteChan
+}
+
+func (r *RanUe) GetUeContextReleaseCompleteChan() chan struct{} {
+	return r.ueContextReleaseCompleteChan
+}
+
+func (r *RanUe) GetPduSessionModifyIndicationCompleteChan() chan struct{} {
+	return r.pduSessionModifyIndicationCompleteChan
 }
 
 func (r *RanUe) IsNrdcActivated() bool {

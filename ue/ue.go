@@ -207,7 +207,6 @@ func (u *Ue) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 		return err
 	}
-	time.Sleep(1 * time.Second)
 
 	if err := u.processPduSessionEstablishment(); err != nil {
 		u.UeLog.Errorf("Error processing PDU session establishment: %v", err)
@@ -216,7 +215,6 @@ func (u *Ue) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 		return err
 	}
-	time.Sleep(1 * time.Second)
 
 	if err := u.connectToRanDataPlane(); err != nil {
 		u.UeLog.Errorf("Error connecting to RAN data plane: %v", err)
@@ -308,7 +306,7 @@ func (u *Ue) connectToRanDataPlane() error {
 	u.ranDataPlaneConn = conn
 	u.RanLog.Debugln("Dial UDP to RAN data plane success")
 
-	_, err = u.ranDataPlaneConn.Write([]byte(constant.UE_DATA_PLANE_INITIAL_PACKET))
+	_, err = u.ranDataPlaneConn.Write([]byte(constant.UE_DATA_PLANE_INITIAL_PACKET + " " + constant.UE_IMSI_PREFIX + u.supi))
 	if err != nil {
 		return fmt.Errorf("error send initial packet: %+v", err)
 	}
@@ -322,7 +320,7 @@ func (u *Ue) connectToRanDataPlane() error {
 		u.dcRanDataPlaneConn = conn
 		u.RanLog.Debugln("Dial UDP to DC RAN data plane success")
 
-		_, err = u.dcRanDataPlaneConn.Write([]byte(constant.UE_DATA_PLANE_INITIAL_PACKET))
+		_, err = u.dcRanDataPlaneConn.Write([]byte(constant.UE_DATA_PLANE_INITIAL_PACKET + " " + constant.UE_IMSI_PREFIX + u.supi))
 		if err != nil {
 			return fmt.Errorf("error send initial packet: %+v", err)
 		}
@@ -449,7 +447,23 @@ func (u *Ue) processUeRegistration() error {
 	u.NasLog.Tracef("Sent %d bytes of NAS Security Mode Complete Message to RAN", n)
 	u.NasLog.Debugln("Send NAS Security Mode Complete Message to RAN")
 
-	time.Sleep(500 * time.Microsecond)
+	// receive nas registration accept
+	nasRegistrationAcceptRaw := make([]byte, 1024)
+	n, err = u.ranControlPlaneConn.Read(nasRegistrationAcceptRaw)
+	if err != nil {
+		return fmt.Errorf("error read nas registration accept: %+v", err)
+	}
+	u.NasLog.Tracef("Received %d bytes of NAS Registration Accept from RAN", n)
+
+	nasPdu, err = nasDecode(u, nas.GetSecurityHeaderType(nasRegistrationAcceptRaw[:n]), nasRegistrationAcceptRaw[:n])
+	if err != nil {
+		return fmt.Errorf("error decode nas registration accept: %+v", err)
+	}
+	if nasPdu.GmmHeader.GetMessageType() != nas.MsgTypeRegistrationAccept {
+		return fmt.Errorf("error nas pdu message type: %+v, expected registration accept", nasPdu)
+	}
+	u.NasLog.Tracef("NAS registration accept: %+v", nasPdu)
+	u.NasLog.Debugln("Receive NAS Registration Accept from RAN")
 
 	// send nas registration complete message to RAN
 	nasRegistrationCompleteMessage, err := getNasRegistrationCompleteMessage(nil)
@@ -470,6 +484,24 @@ func (u *Ue) processUeRegistration() error {
 	}
 	u.NasLog.Tracef("Sent %d bytes of NAS Registration Complete Message to RAN", n)
 	u.NasLog.Debugln("Send NAS Registration Complete Message to RAN")
+
+	// receive nas configuration update command
+	nasConfigurationUpdateCommandRaw := make([]byte, 1024)
+	n, err = u.ranControlPlaneConn.Read(nasConfigurationUpdateCommandRaw)
+	if err != nil {
+		return fmt.Errorf("error read nas configuration update command: %+v", err)
+	}
+	u.NasLog.Tracef("Received %d bytes of NAS Configuration Update Command from RAN", n)
+
+	nasPdu, err = nasDecode(u, nas.GetSecurityHeaderType(nasConfigurationUpdateCommandRaw[:n]), nasConfigurationUpdateCommandRaw[:n])
+	if err != nil {
+		return fmt.Errorf("error decode nas configuration update command: %+v", err)
+	}
+	if nasPdu.GmmHeader.GetMessageType() != nas.MsgTypeConfigurationUpdateCommand {
+		return fmt.Errorf("error nas pdu message type: %+v, expected configuration update command", nasPdu)
+	}
+	u.NasLog.Tracef("NAS configuration update command: %+v", nasPdu)
+	u.NasLog.Debugln("Receive NAS Configuration Update Command from RAN")
 
 	u.RanLog.Infoln("UE Registration finished")
 	return nil
@@ -814,7 +846,7 @@ func (u *Ue) updateDataPlane() {
 		}
 		u.dcRanDataPlaneConn = conn
 
-		_, err = u.dcRanDataPlaneConn.Write([]byte(constant.UE_DATA_PLANE_INITIAL_PACKET))
+		_, err = u.dcRanDataPlaneConn.Write([]byte(constant.UE_DATA_PLANE_INITIAL_PACKET + " " + constant.UE_IMSI_PREFIX + u.supi))
 		if err != nil {
 			u.TunLog.Errorf("Error send initial packet: %+v", err)
 			return

@@ -12,7 +12,8 @@ A key technical innovation of free-ran-ue is the implementation of [userspace GT
 
 ## **Support Features**
 
-- Fundamental support for UE registration and PDU session establishment in both control and data planes
-- Advanced feature: Support for [NR-DC (New Radio Dual Connectivity)](https://free5gc.org/blog/20250219/20250219/), enabling simultaneous data plane connections across two gNBs
+- Fundamental support for **UE registration** and **PDU session establishment** in both control and data planes
+- **Advanced feature**: Support for [NR-DC (New Radio Dual Connectivity)](https://free5gc.org/blog/20250219/20250219/), enabling simultaneous data plane connections across two gNBs
+- **Multiple UEs**: Launch multiple UEs with a single command.
 
 For more information on how to use **free-ran-ue**, please refer to the [User Guide](doc-user-guide/index.md).
