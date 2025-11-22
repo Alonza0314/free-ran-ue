@@ -637,11 +637,11 @@ func (g *Gnb) startDataPlaneProcessor() {
 		g.RanLog.Tracef("Received %d bytes of data from UE: %+v", n, buffer[:n])
 		g.RanLog.Tracef("Received %d bytes of data from UE", n)
 
-		if n > len(constant.UE_DATA_PLANE_INITIAL_PACKET) && string(buffer[:len(constant.UE_DATA_PLANE_INITIAL_PACKET)]) == constant.UE_DATA_PLANE_INITIAL_PACKET {
-			go g.handleUeDataPlaneInitialPacket(ueAddress, string(buffer[len(constant.UE_DATA_PLANE_INITIAL_PACKET)+1:n]))
+		tmp := make([]byte, n)
+		copy(tmp, buffer[:n])
+		if n > len(constant.UE_DATA_PLANE_INITIAL_PACKET) && string(tmp[:len(constant.UE_DATA_PLANE_INITIAL_PACKET)]) == constant.UE_DATA_PLANE_INITIAL_PACKET {
+			go g.handleUeDataPlaneInitialPacket(ueAddress, string(tmp[len(constant.UE_DATA_PLANE_INITIAL_PACKET)+1:n]))
 		} else {
-			tmp := make([]byte, n)
-			copy(tmp, buffer[:n])
 			go g.handleUeDataPlanePacket(ueAddress, tmp)
 		}
 	}
