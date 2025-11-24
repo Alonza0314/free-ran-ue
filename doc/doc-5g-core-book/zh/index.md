@@ -34,21 +34,23 @@
 
 本系列大致分為四個部分（可依需求跳讀）：
 
-- **Part I — 5G 核心網路的基礎與演進背景**
+- [**Part I — 5G 核心網路的基礎與演進背景**](./part1-history/chapter1)
 
     從 4G EPC 到 5G Core 的演變、3GPP 對 5GC 的整體視角，幫你建立大地圖。
 
-- **Part II — free5GC 全架構深度解析**
+- [**Part II — free5GC 全架構深度解析**](./part2-free5gc/chapter3)
 
     逐一拆解 AMF、SMF、UPF 等核心網元，對照實際模組與流程。
 
-- **Part III — free5GC 實戰部署與常見問題**  
+- [**Part III — free5GC 實戰部署與常見問題**](./part3-deploy/chapter8)
 
     從單機環境到多節點、多 UPF 的部署模式（docker / k8s），並整理常見坑與排錯思路。
 
-- **Part IV — free-ran-ue 模擬器**  
+- [**Part IV — free-ran-ue 模擬器**](./part4-free-ran-ue/chapter11)
 
     說明為什麼需要 RAN/UE 模擬器、free-ran-ue 的設計理念，以及如何與 free5GC 整合與進行實驗。
+
+<!-- - [**Part V - 專題研究與延伸議題**] -->
 
 **如果你是第一次接觸 5G：**
 

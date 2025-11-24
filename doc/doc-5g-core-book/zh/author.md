@@ -4,7 +4,7 @@
   <div>
     <img alt="alonza" src="https://avatars.githubusercontent.com/u/102594269?v=4">
     <div class="author-info">
-      <h2>杜峯 Alonza</h2>
+      <h2><a href="https://alonza0314.github.io/">杜峯 Alonza</a></h2>
       <div class="exp">
         <p>Intern @ Saviah</p>
         <p>Committer @ free5GC</p>
