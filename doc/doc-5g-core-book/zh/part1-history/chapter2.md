@@ -315,3 +315,9 @@ QoS（Quality of Service）是行動網路裡的一個重要主題，在 4G 裡�
 - 對 **5G 的基本安全概念**（AKA、SUCI/SUPI、安全模式）有了第一次印象
 
 接下來的章節，我們會從 5G 的架構出發，透過分析開源專案 free5GC 逐步往下拆解各個網路元件（例如 AMF、SMF、UPF…）的角色與內部流程，讓你能夠從「看懂整體地圖」，一路走到「看懂每一條路線上發生了什麼事」。
+
+<div class="chapter-nav">
+  <a href="../../part2-free5gc/chapter3/" class="nav-btn nav-next" title="下一章：free5GC 整體架構與模組介紹">
+    <span class="arrow"></span>
+  </a>
+</div>
