@@ -46,7 +46,6 @@ func TestSemaphoreBlocking(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-
 	select {
 	case <-acquired:
 		t.Error("Acquire should be blocked, but it is not blocked")
@@ -84,11 +83,11 @@ func TestSemaphoreConcurrent(t *testing.T) {
 			current := atomic.AddInt32(&currentConcurrent, 1)
 
 			for {
-				max := atomic.LoadInt32(&maxReached)
-				if current <= max {
+				maxVal := atomic.LoadInt32(&maxReached)
+				if current <= maxVal {
 					break
 				}
-				if atomic.CompareAndSwapInt32(&maxReached, max, current) {
+				if atomic.CompareAndSwapInt32(&maxReached, maxVal, current) {
 					break
 				}
 			}
