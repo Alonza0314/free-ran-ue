@@ -69,7 +69,7 @@ func ueFunc(cmd *cobra.Command, args []string) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	wg, startStopWg, ues, uesMtx, errChan, semaphore := sync.WaitGroup{}, sync.WaitGroup{}, make([]*ue.Ue, 0, num), sync.Mutex{}, make(chan error, num), make(chan struct{}, maxConcurrent)
+	wg, startStopWg, ues, uesMtx, errChan, semaphore := sync.WaitGroup{}, sync.WaitGroup{}, make([]*ue.Ue, 0, num), sync.Mutex{}, make(chan error, num), util.NewSemaphore(maxConcurrent)
 
 	defer func() {
 		cancel()
@@ -80,8 +80,8 @@ func ueFunc(cmd *cobra.Command, args []string) {
 			go func(ueInstance *ue.Ue) {
 				defer startStopWg.Done()
 
-				semaphore <- struct{}{}
-				defer func() { <-semaphore }()
+				semaphore.Acquire()
+				defer func() { semaphore.Release() }()
 
 				ueInstance.Stop()
 			}(u)
@@ -100,8 +100,8 @@ func ueFunc(cmd *cobra.Command, args []string) {
 		go func(index int) {
 			defer startStopWg.Done()
 
-			semaphore <- struct{}{}
-			defer func() { <-semaphore }()
+			semaphore.Acquire()
+			defer func() { semaphore.Release() }()
 
 			ueConfigCopy := ueConfig
 			updateUeConfig(&ueConfigCopy, baseMsinInt, baseUeTunnelDevice, index)
