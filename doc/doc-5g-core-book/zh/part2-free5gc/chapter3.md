@@ -121,7 +121,7 @@ free5GC 在 Github 上並不是只有一個倉庫，而是由[主倉庫](https:/
 理解這樣的目錄與模組分工，有助於你在閱讀任何一個 free5GC NF 時，快速找到：
 
 - 從哪裡啟動程式（`cmd/main.go`）
-- 從哪裡看日誌與設定初始化（`context`、`logger`）
+- 從哪裡看內部功能處理邏輯與日誌設定（`context`、`logger`）
 - 從哪裡追蹤 SBI 收送流程與行為（`sbi` 底下的 server / consumer / processor）
 - 以及哪些工具或共用程式碼可以複用（`util`、`pkg`）
 
