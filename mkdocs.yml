@@ -22,8 +22,8 @@ nav:
         - 第 3 章：free5GC 整體架構與模組介紹: doc-5g-core-book/zh/part2-free5gc/chapter3.md
         - 第 4 章：AMF 詳解: doc-5g-core-book/zh/part2-free5gc/chapter4.md
         - 第 5 章：SMF、UPF 與使用者面流程: doc-5g-core-book/zh/part2-free5gc/chapter5.md
-        - 第 6 章：其他網路元件 (UDM/AUSF/PCF/CHF/NSSF/NEF/NRF/UDR): doc-5g-core-book/zh/part2-free5gc/chapter6.md
-        - 第 7 章：非 3GPP 接入（N3IWF/TNGF）: doc-5g-core-book/zh/part2-free5gc/chapter7.md
+        - 第 6 章：其他網路元件: doc-5g-core-book/zh/part2-free5gc/chapter6.md
+        - 第 7 章：非 3GPP 接入: doc-5g-core-book/zh/part2-free5gc/chapter7.md
       - Part III - free5GC 實戰部署與常見問題:
         - 第 8 章：free5GC 部署實戰: doc-5g-core-book/zh/part3-deploy/chapter8.md
         - 第 9 章：多節點 / 多 UPF 部署: doc-5g-core-book/zh/part3-deploy/chapter9.md
