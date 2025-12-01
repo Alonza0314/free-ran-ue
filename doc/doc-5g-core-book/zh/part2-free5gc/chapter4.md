@@ -20,16 +20,18 @@
 
 ## 4.2 N2 介面與相關協定
 
+![protocol](./image/protocol.png)
+
+## 4.2.1 N2
+
 N2 介面是 5G RAN（gNB）與 5GC 控制面（AMF）之間的控制平面介面，主要承載：
 
 - gNB 與 AMF 之間的訊號協調，例如 UE 附著、追蹤區更新、切換等程序
 - 承載 UE 的 NAS 訊息，將其包**在 NGAP 訊息中轉送給 AMF 處理**
 
-在協定堆疊上，N2 介面通常使用 IP 之上的 **SCTP** 作為傳輸層協定，在其上運行 **NGAP** 應用層協定，而 UE 與核心網之間的 **NAS** 訊息則被封裝在 NGAP 訊息中，透過 N2 轉遞給 AMF，如下圖所示：
+在協定堆疊上，N2 介面通常使用 IP 之上的 **SCTP** 作為傳輸層協定，在其上運行 **NGAP** 應用層協定，而 UE 與核心網之間的 **NAS** 訊息則被封裝在 NGAP 訊息中，透過 N2 轉遞給 AMF，如上面的協定堆疊圖所示。
 
-![protocol](./image/protocol.png)
-
-### 4.2.1 SCTP
+### 4.2.2 SCTP
 
 SCTP（Stream Control Transmission Protocol）是一種訊息導向、支援多路徑與多串流的傳輸層協定，在 5G N2 介面中被用來承載 NGAP 訊息。與一般常見的 TCP 相比，SCTP 的幾個特點特別適合電信訊號：
 
@@ -39,7 +41,7 @@ SCTP（Stream Control Transmission Protocol）是一種訊息導向、支援多�
 
 在實作上，gNB 與 AMF 會各自在 N2 專用的 IP/Port 上建立 SCTP 連線，後續所有 NGAP 訊息都透過這條連線交換。
 
-### 4.2.2 NGAP
+### 4.2.3 NGAP
 
 NGAP（Next Generation Application Protocol）是運行在 N2 介面上的應用層訊號協定，負責定義 gNB 與 AMF 之間各種控制流程使用的訊息格式與程序。常見的 NGAP 程序包括：
 
@@ -53,7 +55,7 @@ NGAP（Next Generation Application Protocol）是運行在 N2 介面上的應用
 - 根據 PDU 類型分派到對應的處理程序（例如處理 Initial UE Message、UE Context Release 等）
 - 從 NGAP 中取出 NAS 負載（N1 message），交給 NAS 處理邏輯
 
-### 4.2.3 NAS
+### 4.2.4 NAS
 
 NAS（Non-Access Stratum）是 UE 與 5GC 之間的控制平面訊號層級，對 UE 來說，它是「直接跟核心網說話」的那一層。NAS 負責的內容包括：
 
