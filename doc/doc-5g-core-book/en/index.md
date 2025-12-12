@@ -1,1 +1,0 @@
-# 5G Core Book

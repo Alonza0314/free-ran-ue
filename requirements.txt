@@ -1,5 +1,0 @@
-mkdocs==1.5.3
-mkdocs-material==9.5.13
-pymdown-extensions==10.7
-mkdocs-callouts==1.16.0
-mkdocs-minify-plugin==0.7.1 
