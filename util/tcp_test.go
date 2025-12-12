@@ -5,7 +5,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/Alonza0314/free-ran-ue/util"
+	"github.com/free-ran-ue/free-ran-ue/util"
 )
 
 var testTcpDialWithOptionalLocalAddressCases = []struct {

@@ -1,10 +1,10 @@
 site_name: free-ran-ue
 site_description: 'RAN/UE Simulation Tool'
 site_author: 'alonza0314'
-site_url: 'https://alonza0314.github.io/free-ran-ue'
+site_url: 'https://free-ran-ue.github.io'
 
 repo_name: 'alonza0314/free-ran-ue'
-repo_url: 'https://github.com/alonza0314/free-ran-ue'
+repo_url: 'https://github.com/free-ran-ue/free-ran-ue'
 
 # Documentation layout
 nav:

@@ -1,4 +1,4 @@
-module github.com/Alonza0314/free-ran-ue
+module github.com/free-ran-ue/free-ran-ue
 
 go 1.24.5
 

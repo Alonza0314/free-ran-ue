@@ -8,8 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/Alonza0314/free-ran-ue/constant"
-	"github.com/Alonza0314/free-ran-ue/util"
+	"github.com/free-ran-ue/free-ran-ue/constant"
+	"github.com/free-ran-ue/free-ran-ue/util"
 )
 
 var testGinRouterCases = util.Routes{

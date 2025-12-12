@@ -59,7 +59,7 @@ Here is the deployment of these three namespaces:
 1. Clone and build free-ran-ue
 
     ```bash
-    git clone https://github.com/Alonza0314/free-ran-ue.git
+    git clone https://github.com/free-ran-ue/free-ran-ue.git
     cd free-ran-ue
     make
     ```

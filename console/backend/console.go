@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Alonza0314/free-ran-ue/constant"
-	"github.com/Alonza0314/free-ran-ue/logger"
-	"github.com/Alonza0314/free-ran-ue/model"
-	"github.com/Alonza0314/free-ran-ue/util"
+	"github.com/free-ran-ue/free-ran-ue/constant"
+	"github.com/free-ran-ue/free-ran-ue/logger"
+	"github.com/free-ran-ue/free-ran-ue/model"
+	"github.com/free-ran-ue/free-ran-ue/util"
 	"github.com/gin-gonic/gin"
 )
 

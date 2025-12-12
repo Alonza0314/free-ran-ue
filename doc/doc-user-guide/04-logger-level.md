@@ -18,4 +18,4 @@ There are six log levels available for gNB, UE and console:
 - trace: Detailed step-by-step information for in-depth analysis.
 - test: Logs for developer checking anywhere.
 
-This can be customized in the [configuration files](https://github.com/Alonza0314/free-ran-ue/tree/main/config).
+This can be customized in the [configuration files](https://github.com/free-ran-ue/free-ran-ue/tree/main/config).

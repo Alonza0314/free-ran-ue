@@ -1,10 +1,10 @@
 package logger
 
 import (
-	"github.com/Alonza0314/free-ran-ue/constant"
 	loggergo "github.com/Alonza0314/logger-go/v2"
 	loggergoModel "github.com/Alonza0314/logger-go/v2/model"
 	loggergoUtil "github.com/Alonza0314/logger-go/v2/util"
+	"github.com/free-ran-ue/free-ran-ue/constant"
 )
 
 type GnbLogger struct {
