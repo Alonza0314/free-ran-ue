@@ -44,7 +44,7 @@ Please refer to the official document: [Install free5GC](https://free5gc.org/gui
         ```yaml
         gtpu:
           forwarder: gtp5g
-          iifList:
+          ifList:
             - addr: <your export IP>
         ```
 
