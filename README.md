@@ -5,7 +5,7 @@
 <p align="center">
 <a href="https://github.com/free-ran-ue/free-ran-ue/releases"><img src="https://img.shields.io/github/v/release/Alonza0314/free-ran-ue?color=orange" alt="Release"/></a>
 <a href="https://github.com/free-ran-ue/free-ran-ue/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Alonza0314/free-ran-ue?color=blue" alt="License"/></a>
-<a href="https://www.codefactor.io/repository/github/Alonza0314/free-ran-ue"><img src="https://www.codefactor.io/repository/github/Alonza0314/free-ran-ue/badge" alt="CodeFactor"/></a>
+<a href="https://www.codefactor.io/repository/github/free-ran-ue/free-ran-ue"><img src="https://www.codefactor.io/repository/github/free-ran-ue/free-ran-ue/badge" alt="CodeFactor" /></a>
 <a href="https://goreportcard.com/badge/github.com/free-ran-ue/free-ran-ue"><img src="https://goreportcard.com/badge/github.com/free-ran-ue/free-ran-ue" alt="goReport"/></a>
 <img src="https://img.shields.io/badge/control%20plane-functional-green" alt="OS Linux"/>  
 <img src="https://img.shields.io/badge/data%20plane-functional-green" alt="OS Linux"/>
