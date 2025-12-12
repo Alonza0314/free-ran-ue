@@ -1,6 +1,6 @@
 # free-ran-ue
 
-![free-ran-ue](/doc/image/free-ran-ue.jpg)
+![free-ran-ue](./free-ran-ue.jpg)
 
 <p align="center">
 <a href="https://github.com/free-ran-ue/free-ran-ue/releases"><img src="https://img.shields.io/github/v/release/Alonza0314/free-ran-ue?color=orange" alt="Release"/></a>
