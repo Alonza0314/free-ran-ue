@@ -58,6 +58,8 @@
 
 .md-content {
   background-color: transparent;
+  /* 預留底部空間，避免被右下角章節導航按鈕遮擋 */
+  padding-bottom: 80px;
 }
 
 /* 5G 相關的現代化樣式 */
@@ -198,11 +200,6 @@ body.show-footer-nav .md-footer .md-footer__inner {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
-}
-
-/* 確保內容區域有足夠底部空間，避免被按鈕遮擋 */
-.md-content {
-  padding-bottom: 80px;
 }
 
 .nav-btn {
@@ -371,7 +368,7 @@ body.show-footer-nav .md-footer .md-footer__inner {
 }
 
 .author-info h2 {
-  margin: 0 0 1rem 0;
+  margin: 0 0 1rem;
   font-size: 1.8rem;
   color: #004480;
   font-weight: 700;
