@@ -217,3 +217,9 @@ free5GC 除了實體執行以外，亦提供了 Docker 的 Compose 檔案讓使�
 本章從實作角度帶著讀者完成一次完整的 free5GC 部署流程。首先，我們說明了為什麼必須在實際承載 UPF 流量的主機上安裝 gtp5g 核心模組，並示範如何啟用 IP Forward 與基本的 NAT/MTU 設定，讓 UPF 能夠正確轉送使用者面封包。接著，我們介紹了在實體機（或 VM）環境中安裝 Go、取得並編譯 free5GC 原始碼，以及調整 AMF/SMF/UPF 設定檔中與外部 gNB 連線相關的關鍵欄位，最後透過 `run.sh` 一鍵啟動整個核心網。
 
 在此基礎上，本章也示範了如何使用 Docker Compose 以官方鏡像或本地自行建構的鏡像啟動 free5GC，讓讀者可以依照自身需求選擇「裸機部署」或「容器化部署」兩種方式。掌握了這些步驟與背後的原因之後，你應該已經能夠在自己的實驗環境中反覆重建與調整 free5GC，作為後續進一步研究 RAN、UE 或進階網路場景的基礎。
+
+<div class="chapter-nav">
+  <a href="../chapter9/" class="nav-btn nav-next" title="下一章：多節點 / 多 UPF 部署">
+    <span class="arrow"></span>
+  </a>
+</div>
