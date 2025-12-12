@@ -32,7 +32,7 @@ nav:
         - 第 11 章：free-ran-ue 的架構設計: doc-5g-core-book/zh/part4-free-ran-ue/chapter11.md
         - 第 12 章：模擬器如何與 free5GC 整合: doc-5g-core-book/zh/part4-free-ran-ue/chapter12.md
       - Part V - 專題研究與延伸議題:
-        - 第 13 章：NR-DC 實驗: doc-5g-core-book/zh/part4-free-ran-ue/chapter13.md
+        - 第 13 章：NR-DC 實驗: doc-5g-core-book/zh/part5-extension/chapter13.md
     - English:
       - Home: doc-5g-core-book/en/index.md
   - Contributors: doc-contributors/index.md
