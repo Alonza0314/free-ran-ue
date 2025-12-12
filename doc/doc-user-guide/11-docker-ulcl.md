@@ -59,7 +59,7 @@ Here is the deployment of ULCL version:
 - Clone
 
     ```bash
-    git clone https://github.com/Alonza0314/free-ran-ue.git
+    git clone https://github.com/free-ran-ue/free-ran-ue.git
     ```
 
 - Build Image

@@ -7,8 +7,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/Alonza0314/free-ran-ue/model"
 	loggergoUtil "github.com/Alonza0314/logger-go/v2/util"
+	"github.com/free-ran-ue/free-ran-ue/model"
 	"github.com/free5gc/openapi/models"
 )
 

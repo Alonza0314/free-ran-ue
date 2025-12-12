@@ -9,13 +9,13 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/Alonza0314/free-ran-ue/constant"
-	"github.com/Alonza0314/free-ran-ue/logger"
-	"github.com/Alonza0314/free-ran-ue/model"
-	"github.com/Alonza0314/free-ran-ue/ue"
-	"github.com/Alonza0314/free-ran-ue/util"
 	loggergo "github.com/Alonza0314/logger-go/v2"
 	loggergoUtil "github.com/Alonza0314/logger-go/v2/util"
+	"github.com/free-ran-ue/free-ran-ue/constant"
+	"github.com/free-ran-ue/free-ran-ue/logger"
+	"github.com/free-ran-ue/free-ran-ue/model"
+	"github.com/free-ran-ue/free-ran-ue/ue"
+	"github.com/free-ran-ue/free-ran-ue/util"
 	"github.com/spf13/cobra"
 )
 

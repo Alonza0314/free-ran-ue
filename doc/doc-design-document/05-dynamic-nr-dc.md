@@ -55,7 +55,7 @@ If gNB get the signal to modify the UE's tunnel, it will iinteract with secondar
     1. Receive the modify indication NGAP message and insert its tunnel's information.
     2. Receive the confirm NGAP message and update the uplink TEID.
 
-    For more details implemtation, please refer to: [xn.go](https://github.com/Alonza0314/free-ran-ue/blob/main/gnb/xn.go)
+    For more details implemtation, please refer to: [xn.go](https://github.com/free-ran-ue/free-ran-ue/blob/main/gnb/xn.go)
 
 ## At UE
 

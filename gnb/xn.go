@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/Alonza0314/free-ran-ue/constant"
+	"github.com/free-ran-ue/free-ran-ue/constant"
 	"github.com/free5gc/aper"
 	"github.com/free5gc/ngap"
 	"github.com/free5gc/ngap/ngapConvert"

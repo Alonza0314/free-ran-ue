@@ -3,7 +3,7 @@ package util_test
 import (
 	"testing"
 
-	"github.com/Alonza0314/free-ran-ue/util"
+	"github.com/free-ran-ue/free-ran-ue/util"
 	"github.com/go-playground/assert/v2"
 )
 
