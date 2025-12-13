@@ -13,7 +13,7 @@
 
 ## Introduction
 
-free-ran-ue is a tool designed to simulate interactions between the core network and RAN/UE. Its primary goal is to provide a practical platform for testing the [NR-DC(New Radio Dual Connectivity)](https://free5gc.org/blog/20250219/20250219/) feature.
+free-ran-ue is a next-generation open-source 5G RAN and UE simulator designed for integration with free5GC. It aims to provide a lightweight, controllable, and extensible platform for validating 5G core network functionality and RAN–core interactions. It also provides a practical platform for testing the [NR-DC(New Radio Dual Connectivity)](https://free5gc.org/blog/20250219/20250219/) feature.
 
 For more details, please visit the [free-ran-ue official website](https://alonza0314.github.io/free-ran-ue/).
 
