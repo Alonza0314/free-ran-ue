@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	loggergo "github.com/Alonza0314/logger-go/v2"
+	loggergoModel "github.com/Alonza0314/logger-go/v2/model"
 	"github.com/free-ran-ue/free-ran-ue/v2/constant"
 	"github.com/free-ran-ue/free-ran-ue/v2/logger"
 	"github.com/free-ran-ue/free-ran-ue/v2/model"
@@ -55,6 +57,8 @@ func NewConsole(config *model.ConsoleConfig, logger *logger.ConsoleLogger) *cons
 
 		ConsoleLogger: logger,
 	}
+
+	gin.DefaultWriter, gin.DefaultErrorWriter = loggergo.NewGinWriter(logger.GinLog), loggergo.NewGinWriter(logger.GinLog)
 
 	c.router = util.NewGinRouter(constant.API_PREFIX_CONSOLE, c.initRoutes())
 
@@ -117,31 +121,50 @@ func (cs *console) initRoutes() util.Routes {
 			Name:        "Console Login",
 			Method:      http.MethodPost,
 			Pattern:     "/login",
-			HandlerFunc: cs.handleConsoleLogin,
+			HandlerFunc: withLogging("Console Login", cs.LoginLog, cs.handleConsoleLogin),
 		},
 		{
 			Name:        "Console Logout",
 			Method:      http.MethodDelete,
 			Pattern:     "/logout",
-			HandlerFunc: cs.handleConsoleLogout,
+			HandlerFunc: withLogging("Console Logout", cs.LogoutLog, cs.handleConsoleLogout),
 		},
 		{
 			Name:        "Authenticate",
 			Method:      http.MethodPost,
 			Pattern:     "/authenticate",
-			HandlerFunc: cs.handleAuthenticate,
+			HandlerFunc: withLogging("Authenticate", cs.AuthLog, cs.handleAuthenticate),
 		},
 		{
 			Name:        "Console GNB Info",
 			Method:      http.MethodPost,
 			Pattern:     "/gnb/info",
-			HandlerFunc: cs.handleConsoleGnbInfo,
+			HandlerFunc: withLogging("Console GNB Info", cs.GnbLog, cs.handleConsoleGnbInfo),
 		},
 		{
 			Name:        "Console GNB UE NRDC Modify",
 			Method:      http.MethodPost,
 			Pattern:     "/gnb/ue/nrdc",
-			HandlerFunc: cs.handleConsoleGnbUeNrdcModify,
+			HandlerFunc: withLogging("Console GNB UE NRDC Modify", cs.GnbLog, cs.handleConsoleGnbUeNrdcModify),
 		},
+	}
+}
+
+// withLogging wraps a route's handler so the request is logged exactly once,
+// after it completes, with the level derived from the response status code
+// the handler wrote (via c.JSON/c.Status).
+func withLogging(name string, lg loggergoModel.LoggerInterface, handler gin.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		handler(c)
+
+		status := c.Writer.Status()
+		switch {
+		case status >= http.StatusInternalServerError:
+			lg.Errorf("%s failed (status %d) for %s", name, status, c.ClientIP())
+		case status >= http.StatusBadRequest:
+			lg.Warnf("%s failed (status %d) for %s", name, status, c.ClientIP())
+		default:
+			lg.Infof("%s succeeded (status %d) for %s", name, status, c.ClientIP())
+		}
 	}
 }

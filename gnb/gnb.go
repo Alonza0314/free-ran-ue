@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	loggergo "github.com/Alonza0314/logger-go/v2"
+	loggergoModel "github.com/Alonza0314/logger-go/v2/model"
 	consoleModel "github.com/free-ran-ue/free-ran-ue/v2/console/model"
 	"github.com/free-ran-ue/free-ran-ue/v2/constant"
 	"github.com/free-ran-ue/free-ran-ue/v2/logger"
@@ -1054,6 +1056,8 @@ func (g *Gnb) xnPduSessionResourceModifyConfirm(imsi string, ngapPduSessionResou
 func (g *Gnb) startApiServer() {
 	g.ApiLog.Infoln("Starting API server")
 
+	gin.DefaultWriter, gin.DefaultErrorWriter = loggergo.NewGinWriter(g.ApiLog), loggergo.NewGinWriter(g.ApiLog)
+
 	g.api.router = util.NewGinRouter(constant.API_PREFIX_GNB, g.initApiRoutes())
 
 	g.api.server = &http.Server{
@@ -1095,20 +1099,37 @@ func (g *Gnb) initApiRoutes() util.Routes {
 			Name:        "Console GNB Info",
 			Method:      constant.API_GNB_INFO_METHOD,
 			Pattern:     constant.API_GNB_INFO,
-			HandlerFunc: g.handleConsoleGnbInfo,
+			HandlerFunc: withLogging("Console GNB Info", g.ApiLog, g.handleConsoleGnbInfo),
 		},
 		{
 			Name:        "Console GNB UE NRDC Modify",
 			Method:      constant.API_GNB_UE_NRDC_METHOD,
 			Pattern:     constant.API_GNB_UE_NRDC,
-			HandlerFunc: g.handleConsoleGnbUeNrdcModify,
+			HandlerFunc: withLogging("Console GNB UE NRDC Modify", g.ApiLog, g.handleConsoleGnbUeNrdcModify),
 		},
 	}
 }
 
-func (g *Gnb) handleConsoleGnbInfo(c *gin.Context) {
-	g.ApiLog.Infoln("Handling console get gnb info")
+// withLogging wraps a route's handler so the request is logged exactly once,
+// after it completes, with the level derived from the response status code
+// the handler wrote (via c.JSON/c.Status).
+func withLogging(name string, lg loggergoModel.LoggerInterface, handler gin.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		handler(c)
 
+		status := c.Writer.Status()
+		switch {
+		case status >= http.StatusInternalServerError:
+			lg.Errorf("%s failed (status %d) for %s", name, status, c.ClientIP())
+		case status >= http.StatusBadRequest:
+			lg.Warnf("%s failed (status %d) for %s", name, status, c.ClientIP())
+		default:
+			lg.Infof("%s succeeded (status %d) for %s", name, status, c.ClientIP())
+		}
+	}
+}
+
+func (g *Gnb) handleConsoleGnbInfo(c *gin.Context) {
 	plmnId := util.PlmnIdToModels(g.plmnId)
 	snssai := util.SNssaiToModels(g.snssai)
 
@@ -1148,13 +1169,9 @@ func (g *Gnb) handleConsoleGnbInfo(c *gin.Context) {
 			XnUeList:  xnUeList,
 		},
 	})
-
-	g.ApiLog.Infoln("Console get gnb info successful")
 }
 
 func (g *Gnb) handleConsoleGnbUeNrdcModify(c *gin.Context) {
-	g.ApiLog.Infoln("Handling console gnb ue nrdc modify")
-
 	var request consoleModel.ConsoleGnbUeNrdcModifyRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		g.ApiLog.Warnf("Error bind console gnb ue nrdc modify request: %v", err)
@@ -1190,6 +1207,4 @@ func (g *Gnb) handleConsoleGnbUeNrdcModify(c *gin.Context) {
 	c.JSON(http.StatusOK, consoleModel.ConsoleGnbUeNrdcModifyResponse{
 		Message: fmt.Sprintf("UE %s NRDC modify success", request.Imsi),
 	})
-
-	g.ApiLog.Infof("Console gnb ue %s nrdc control completed", request.Imsi)
 }

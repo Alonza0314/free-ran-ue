@@ -14,8 +14,6 @@ import (
 )
 
 func (cs *console) handleConsoleGnbInfo(c *gin.Context) {
-	cs.GnbLog.Infoln("Attempting to register gNB")
-
 	if err := authticate(c, cs.jwt.secret); err != nil {
 		cs.AuthLog.Warnln(err)
 		c.JSON(http.StatusUnauthorized, model.ConsoleGnbInfoResponse{
@@ -54,8 +52,6 @@ func (cs *console) handleConsoleGnbInfo(c *gin.Context) {
 }
 
 func (cs *console) handleConsoleGnbUeNrdcModify(c *gin.Context) {
-	cs.GnbLog.Infoln("Attempting to register gNB")
-
 	if err := authticate(c, cs.jwt.secret); err != nil {
 		cs.AuthLog.Warnln(err)
 		c.JSON(http.StatusUnauthorized, model.ConsoleGnbUeNrdcModifyResponse{
