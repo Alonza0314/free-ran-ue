@@ -9,8 +9,6 @@ import (
 )
 
 func (cs *console) handleConsoleLogin(c *gin.Context) {
-	cs.LoginLog.Infoln("Attempting to login")
-
 	var loginRequest model.ConsoleLoginRequest
 	if err := c.ShouldBindJSON(&loginRequest); err != nil {
 		cs.LoginLog.Warnf("Failed to bind login request: %v", err)
@@ -41,23 +39,15 @@ func (cs *console) handleConsoleLogin(c *gin.Context) {
 		Message: "Login successful",
 		Token:   token,
 	})
-
-	cs.LoginLog.Infoln("Login successful")
 }
 
 func (cs *console) handleConsoleLogout(c *gin.Context) {
-	cs.LogoutLog.Infoln("Attempting to logout")
-
 	c.JSON(http.StatusOK, model.ConsoleLogoutResponse{
 		Message: "Logout successful",
 	})
-
-	cs.LogoutLog.Infoln("Logout successful")
 }
 
 func (cs *console) handleAuthenticate(c *gin.Context) {
-	cs.AuthLog.Infoln("Attempting to authenticate")
-
 	authenticateHeader := c.GetHeader("Authorization")
 	if authenticateHeader == "" {
 		cs.AuthLog.Warnln("No authentication header")
@@ -78,6 +68,4 @@ func (cs *console) handleAuthenticate(c *gin.Context) {
 	c.JSON(http.StatusOK, model.AuthenticateResponse{
 		Message: "Authenticate successful",
 	})
-
-	cs.AuthLog.Infoln("Authenticate successful")
 }

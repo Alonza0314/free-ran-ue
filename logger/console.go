@@ -16,6 +16,7 @@ type ConsoleLogger struct {
 	LogoutLog  loggergoModel.LoggerInterface
 	AuthLog    loggergoModel.LoggerInterface
 	GnbLog     loggergoModel.LoggerInterface
+	GinLog     loggergoModel.LoggerInterface
 }
 
 func NewConsoleLogger(level loggergoUtil.LogLevelString, filePath string, debugMode bool) ConsoleLogger {
@@ -31,5 +32,6 @@ func NewConsoleLogger(level loggergoUtil.LogLevelString, filePath string, debugM
 		LogoutLog:  logger.WithTags(constant.CSL_TAG, constant.LOGOUT_TAG),
 		AuthLog:    logger.WithTags(constant.CSL_TAG, constant.AUTH_TAG),
 		GnbLog:     logger.WithTags(constant.CSL_TAG, constant.GNB_TAG),
+		GinLog:     logger.WithTags(constant.CSL_TAG, constant.API_TAG),
 	}
 }
