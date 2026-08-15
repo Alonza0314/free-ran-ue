@@ -13,4 +13,4 @@ updates:
   - package-ecosystem: "npm"
     directory: "/console/frontend"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
