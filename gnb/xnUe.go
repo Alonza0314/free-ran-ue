@@ -2,24 +2,22 @@ package gnb
 
 import (
 	"net"
-
-	"github.com/free5gc/aper"
 )
 
 type XnUe struct {
 	imsi string
 
-	ulTeid aper.OctetString
-	dlTeid aper.OctetString
+	ulTeid []byte
+	dlTeid []byte
 
 	dataPlaneAddress *net.UDPAddr
 }
 
-func NewXnUe(imsi string, dlTeid aper.OctetString, dataPlaneAddress *net.UDPAddr) *XnUe {
+func NewXnUe(imsi string, dlTeid []byte, dataPlaneAddress *net.UDPAddr) *XnUe {
 	return &XnUe{
 		imsi: imsi,
 
-		ulTeid: aper.OctetString{},
+		ulTeid: []byte{},
 		dlTeid: dlTeid,
 
 		dataPlaneAddress: dataPlaneAddress,
@@ -34,11 +32,11 @@ func (x *XnUe) GetIMSI() string {
 	return x.imsi
 }
 
-func (x *XnUe) GetUlTeid() aper.OctetString {
+func (x *XnUe) GetUlTeid() []byte {
 	return x.ulTeid
 }
 
-func (x *XnUe) GetDlTeid() aper.OctetString {
+func (x *XnUe) GetDlTeid() []byte {
 	return x.dlTeid
 }
 
@@ -46,7 +44,7 @@ func (x *XnUe) GetDataPlaneAddress() *net.UDPAddr {
 	return x.dataPlaneAddress
 }
 
-func (x *XnUe) SetUlTeid(ulTeid aper.OctetString) {
+func (x *XnUe) SetUlTeid(ulTeid []byte) {
 	x.ulTeid = ulTeid
 }
 

@@ -4,10 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/free5gc/aper"
-	"github.com/free5gc/ngap"
-	"github.com/free5gc/ngap/ngapConvert"
-	"github.com/free5gc/ngap/ngapType"
+	"github.com/free5gc/ngap/aper"
+	"github.com/free5gc/ngap/ie"
+	"github.com/free5gc/ngap/message"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,30 +14,30 @@ var testBuildNgapSetupRequestCases = []struct {
 	name    string
 	gnbId   []byte
 	gnbName string
-	plmnId  ngapType.PLMNIdentity
-	tai     ngapType.TAI
-	snssai  ngapType.SNSSAI
+	plmnId  ie.PLMNIdentity
+	tai     ie.TAI
+	snssai  ie.SNSSAI
 }{
 	{
 		name:    "testBuildNgapSetupRequest",
 		gnbId:   []byte("\x00\x03\x14"),
 		gnbName: "gNB",
-		plmnId: ngapType.PLMNIdentity{
+		plmnId: ie.PLMNIdentity{
 			Value: aper.OctetString("\x02\xF8\x39"),
 		},
-		tai: ngapType.TAI{
-			TAC: ngapType.TAC{
+		tai: ie.TAI{
+			TAC: &ie.TAC{
 				Value: aper.OctetString("\x00\x00\x01"),
 			},
-			PLMNIdentity: ngapType.PLMNIdentity{
+			PLMNIdentity: &ie.PLMNIdentity{
 				Value: aper.OctetString("\x02\xF8\x39"),
 			},
 		},
-		snssai: ngapType.SNSSAI{
-			SST: ngapType.SST{
+		snssai: ie.SNSSAI{
+			SST: &ie.SST{
 				Value: aper.OctetString("\x01"),
 			},
-			SD: &ngapType.SD{
+			SD: &ie.SD{
 				Value: aper.OctetString("\x01\x02\x03"),
 			},
 		},
@@ -47,22 +46,21 @@ var testBuildNgapSetupRequestCases = []struct {
 		name:    "testBuildNgapSetupRequestWithoutSD",
 		gnbId:   []byte("\x00\x03\x14"),
 		gnbName: "gNB",
-		plmnId: ngapType.PLMNIdentity{
+		plmnId: ie.PLMNIdentity{
 			Value: aper.OctetString("\x02\xF8\x39"),
 		},
-		tai: ngapType.TAI{
-			TAC: ngapType.TAC{
+		tai: ie.TAI{
+			TAC: &ie.TAC{
 				Value: aper.OctetString("\x00\x00\x01"),
 			},
-			PLMNIdentity: ngapType.PLMNIdentity{
+			PLMNIdentity: &ie.PLMNIdentity{
 				Value: aper.OctetString("\x02\xF8\x39"),
 			},
 		},
-		snssai: ngapType.SNSSAI{
-			SST: ngapType.SST{
+		snssai: ie.SNSSAI{
+			SST: &ie.SST{
 				Value: aper.OctetString("\x01"),
 			},
-			SD: nil,
 		},
 	},
 }
@@ -71,16 +69,21 @@ func TestBuildNgapSetupRequest(t *testing.T) {
 	for _, testCase := range testBuildNgapSetupRequestCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			pdu := buildNgapSetupRequest(testCase.gnbId, testCase.gnbName, testCase.plmnId, testCase.tai, testCase.snssai)
-			encodeData, err := ngap.Encoder(pdu)
+			encodeData, err := pdu.MarshalBinary()
 			if err != nil {
 				t.Fatalf("Failed to encode NGAP setup request: %v", err)
-			} else {
-				decodeData, err := ngap.Decoder(encodeData)
-				if err != nil {
-					t.Fatalf("Failed to decode NGAP setup request: %v", err)
-				} else if !reflect.DeepEqual(pdu, *decodeData) {
-					t.Fatalf("NGAP setup request mismatch")
-				}
+			}
+
+			decodeMsg, err := message.Parse(encodeData)
+			if err != nil {
+				t.Fatalf("Failed to decode NGAP setup request: %v", err)
+			}
+			decodeData, ok := decodeMsg.(*message.NGSetupRequest)
+			if !ok {
+				t.Fatalf("Decoded message is not NGSetupRequest: %T", decodeMsg)
+			}
+			if !reflect.DeepEqual(pdu, decodeData) {
+				t.Fatalf("NGAP setup request mismatch")
 			}
 		})
 	}
@@ -90,21 +93,21 @@ var testBuildIntialUeMessageCases = []struct {
 	name                  string
 	ranUeNgapId           int64
 	ueRegistrationRequest []byte
-	plmnId                ngapType.PLMNIdentity
-	tai                   ngapType.TAI
+	plmnId                ie.PLMNIdentity
+	tai                   ie.TAI
 }{
 	{
 		name:                  "testBuildIntialUeMessage",
 		ranUeNgapId:           1,
-		ueRegistrationRequest: []byte("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
-		plmnId: ngapType.PLMNIdentity{
+		ueRegistrationRequest: []byte("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+		plmnId: ie.PLMNIdentity{
 			Value: aper.OctetString("\x02\xF8\x39"),
 		},
-		tai: ngapType.TAI{
-			TAC: ngapType.TAC{
+		tai: ie.TAI{
+			TAC: &ie.TAC{
 				Value: aper.OctetString("\x00\x00\x01"),
 			},
-			PLMNIdentity: ngapType.PLMNIdentity{
+			PLMNIdentity: &ie.PLMNIdentity{
 				Value: aper.OctetString("\x02\xF8\x39"),
 			},
 		},
@@ -115,16 +118,21 @@ func TestBuildIntialUeMessage(t *testing.T) {
 	for _, testCase := range testBuildIntialUeMessageCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			pdu := buildInitialUeMessage(testCase.ranUeNgapId, testCase.ueRegistrationRequest, testCase.plmnId, testCase.tai, []byte{0x00, 0x03, 0x14})
-			encodeData, err := ngap.Encoder(pdu)
+			encodeData, err := pdu.MarshalBinary()
 			if err != nil {
 				t.Fatalf("Failed to encode NGAP initial ue message: %v", err)
-			} else {
-				decodeData, err := ngap.Decoder(encodeData)
-				if err != nil {
-					t.Fatalf("Failed to decode NGAP initial ue message: %v", err)
-				} else if !reflect.DeepEqual(pdu, *decodeData) {
-					t.Fatalf("NGAP initial ue message mismatch")
-				}
+			}
+
+			decodeMsg, err := message.Parse(encodeData)
+			if err != nil {
+				t.Fatalf("Failed to decode NGAP initial ue message: %v", err)
+			}
+			decodeData, ok := decodeMsg.(*message.InitialUEMessage)
+			if !ok {
+				t.Fatalf("Decoded message is not InitialUEMessage: %T", decodeMsg)
+			}
+			if !reflect.DeepEqual(pdu, decodeData) {
+				t.Fatalf("NGAP initial ue message mismatch")
 			}
 		})
 	}
@@ -134,22 +142,22 @@ var testBuildUplinkNasTransportCases = []struct {
 	name        string
 	amfUeNgapId int64
 	ranUeNgapId int64
-	plmnId      ngapType.PLMNIdentity
-	tai         ngapType.TAI
+	plmnId      ie.PLMNIdentity
+	tai         ie.TAI
 	nasPdu      []byte
 }{
 	{
 		name:        "testBuildUplinkNasTransport",
 		amfUeNgapId: 1,
 		ranUeNgapId: 1,
-		plmnId: ngapType.PLMNIdentity{
+		plmnId: ie.PLMNIdentity{
 			Value: aper.OctetString("\x02\xF8\x39"),
 		},
-		tai: ngapType.TAI{
-			TAC: ngapType.TAC{
+		tai: ie.TAI{
+			TAC: &ie.TAC{
 				Value: aper.OctetString("\x00\x00\x01"),
 			},
-			PLMNIdentity: ngapType.PLMNIdentity{
+			PLMNIdentity: &ie.PLMNIdentity{
 				Value: aper.OctetString("\x02\xF8\x39"),
 			},
 		},
@@ -161,16 +169,21 @@ func TestBuildUplinkNasTransport(t *testing.T) {
 	for _, testCase := range testBuildUplinkNasTransportCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			pdu := buildUplinkNasTransport(testCase.amfUeNgapId, testCase.ranUeNgapId, testCase.plmnId, testCase.tai, testCase.nasPdu, []byte{0x00, 0x03, 0x14})
-			encodeData, err := ngap.Encoder(pdu)
+			encodeData, err := pdu.MarshalBinary()
 			if err != nil {
 				t.Fatalf("Failed to encode NGAP uplink nas transport: %v", err)
-			} else {
-				decodeData, err := ngap.Decoder(encodeData)
-				if err != nil {
-					t.Fatalf("Failed to decode NGAP uplink nas transport: %v", err)
-				} else if !reflect.DeepEqual(pdu, *decodeData) {
-					t.Fatalf("NGAP uplink nas transport mismatch")
-				}
+			}
+
+			decodeMsg, err := message.Parse(encodeData)
+			if err != nil {
+				t.Fatalf("Failed to decode NGAP uplink nas transport: %v", err)
+			}
+			decodeData, ok := decodeMsg.(*message.UplinkNASTransport)
+			if !ok {
+				t.Fatalf("Decoded message is not UplinkNASTransport: %T", decodeMsg)
+			}
+			if !reflect.DeepEqual(pdu, decodeData) {
+				t.Fatalf("NGAP uplink nas transport mismatch")
 			}
 		})
 	}
@@ -192,16 +205,21 @@ func TestBuildNgapInitialContextSetupResponse(t *testing.T) {
 	for _, testCase := range testBuildNgapInitialContextSetupResponseCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			pdu := buildNgapInitialContextSetupResponse(testCase.amfUeNgapId, testCase.ranUeNgapId)
-			encodeData, err := ngap.Encoder(pdu)
+			encodeData, err := pdu.MarshalBinary()
 			if err != nil {
 				t.Fatalf("Failed to encode NGAP initial context setup response: %v", err)
-			} else {
-				decodeData, err := ngap.Decoder(encodeData)
-				if err != nil {
-					t.Fatalf("Failed to decode NGAP initial context setup response: %v", err)
-				} else if !reflect.DeepEqual(pdu, *decodeData) {
-					t.Fatalf("NGAP initial context setup response mismatch")
-				}
+			}
+
+			decodeMsg, err := message.Parse(encodeData)
+			if err != nil {
+				t.Fatalf("Failed to decode NGAP initial context setup response: %v", err)
+			}
+			decodeData, ok := decodeMsg.(*message.InitialContextSetupResponse)
+			if !ok {
+				t.Fatalf("Decoded message is not InitialContextSetupResponse: %T", decodeMsg)
+			}
+			if !reflect.DeepEqual(pdu, decodeData) {
+				t.Fatalf("NGAP initial context setup response mismatch")
 			}
 		})
 	}
@@ -231,17 +249,18 @@ var testBuildPduSessionResourceSetupResponseTransferMessageCases = []struct {
 func TestBuildPduSessionResourceSetupResponseTransferMessage(t *testing.T) {
 	for _, testCase := range testBuildPduSessionResourceSetupResponseTransferMessageCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			transferMessage := buildPduSessionResourceSetupResponseTransfer(testCase.dlTeid, testCase.ranN3Ip, testCase.qosId, false, ngapType.QosFlowPerTNLInformationItem{})
-			encodeTransferMessage, err := aper.MarshalWithParams(transferMessage, "valueExt")
+			transferMessage := buildPduSessionResourceSetupResponseTransfer(testCase.dlTeid, testCase.ranN3Ip, testCase.qosId, false, ie.QosFlowPerTNLInformationItem{})
+			encodeTransferMessage, err := ie.MarshalBinary(&transferMessage)
 			if err != nil {
 				t.Fatalf("Failed to marshal pdu session resource setup response transfer message: %v", err)
-			} else {
-				decodeTransferMessage := &ngapType.PDUSessionResourceSetupResponseTransfer{}
-				if err := aper.UnmarshalWithParams(encodeTransferMessage, decodeTransferMessage, "valueExt"); err != nil {
-					t.Fatalf("Failed to unmarshal pdu session resource setup response transfer message: %v", err)
-				} else if !reflect.DeepEqual(transferMessage, *decodeTransferMessage) {
-					t.Fatalf("PDU session resource setup response transfer message mismatch")
-				}
+			}
+
+			decodeTransferMessage := &ie.PDUSessionResourceSetupResponseTransfer{}
+			if err := ie.UnmarshalBinary(encodeTransferMessage, decodeTransferMessage); err != nil {
+				t.Fatalf("Failed to unmarshal pdu session resource setup response transfer message: %v", err)
+			}
+			if !reflect.DeepEqual(&transferMessage, decodeTransferMessage) {
+				t.Fatalf("PDU session resource setup response transfer message mismatch")
 			}
 		})
 	}
@@ -252,28 +271,29 @@ var testBuildPduSessionResourceSetupResponseTransferMessageWithNRDCases = []stru
 	dlTeid  []byte
 	ranN3Ip string
 	qosId   int64
-	ngapType.QosFlowPerTNLInformationItem
+	ie.QosFlowPerTNLInformationItem
 }{
 	{
 		name:    "testBuildPduSessionResourceSetupResponseTransferMessageWithNRDCases",
 		dlTeid:  []byte("\x00\x00\x00\x01"),
 		ranN3Ip: "127.0.0.1",
 		qosId:   1,
-		QosFlowPerTNLInformationItem: ngapType.QosFlowPerTNLInformationItem{
-			QosFlowPerTNLInformation: ngapType.QosFlowPerTNLInformation{
-				UPTransportLayerInformation: ngapType.UPTransportLayerInformation{
-					Present: ngapType.UPTransportLayerInformationPresentGTPTunnel,
-					GTPTunnel: &ngapType.GTPTunnel{
-						GTPTEID: ngapType.GTPTEID{
+		QosFlowPerTNLInformationItem: ie.QosFlowPerTNLInformationItem{
+			QosFlowPerTNLInformation: &ie.QosFlowPerTNLInformation{
+				UPTransportLayerInformation: &ie.UPTransportLayerInformation{
+					Choice: &ie.GTPTunnel{
+						GTPTEID: &ie.GTPTEID{
 							Value: aper.OctetString("\x00\x00\x00\x01"),
 						},
-						TransportLayerAddress: ngapConvert.IPAddressToNgap("127.0.0.1", ""),
+						TransportLayerAddress: &ie.TransportLayerAddress{
+							Value: ngapConvertIPAddressToNgap("127.0.0.1"),
+						},
 					},
 				},
-				AssociatedQosFlowList: ngapType.AssociatedQosFlowList{
-					List: []ngapType.AssociatedQosFlowItem{
+				AssociatedQosFlowList: &ie.AssociatedQosFlowList{
+					List: []ie.AssociatedQosFlowItem{
 						{
-							QosFlowIdentifier: ngapType.QosFlowIdentifier{
+							QosFlowIdentifier: &ie.QosFlowIdentifier{
 								Value: 1,
 							},
 						},
@@ -288,16 +308,17 @@ func TestBuildPduSessionResourceSetupResponseTransferMessageWithNRDCases(t *test
 	for _, testCase := range testBuildPduSessionResourceSetupResponseTransferMessageWithNRDCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			transferMessage := buildPduSessionResourceSetupResponseTransfer(testCase.dlTeid, testCase.ranN3Ip, testCase.qosId, true, testCase.QosFlowPerTNLInformationItem)
-			encodeTransferMessage, err := aper.MarshalWithParams(transferMessage, "valueExt")
+			encodeTransferMessage, err := ie.MarshalBinary(&transferMessage)
 			if err != nil {
 				t.Fatalf("Failed to marshal pdu session resource setup response transfer message: %v", err)
-			} else {
-				decodeTransferMessage := &ngapType.PDUSessionResourceSetupResponseTransfer{}
-				if err := aper.UnmarshalWithParams(encodeTransferMessage, decodeTransferMessage, "valueExt"); err != nil {
-					t.Fatalf("Failed to unmarshal pdu session resource setup response transfer message: %v", err)
-				} else if !reflect.DeepEqual(transferMessage, *decodeTransferMessage) {
-					t.Fatalf("PDU session resource setup response transfer message mismatch")
-				}
+			}
+
+			decodeTransferMessage := &ie.PDUSessionResourceSetupResponseTransfer{}
+			if err := ie.UnmarshalBinary(encodeTransferMessage, decodeTransferMessage); err != nil {
+				t.Fatalf("Failed to unmarshal pdu session resource setup response transfer message: %v", err)
+			}
+			if !reflect.DeepEqual(&transferMessage, decodeTransferMessage) {
+				t.Fatalf("PDU session resource setup response transfer message mismatch")
 			}
 		})
 	}
@@ -323,16 +344,21 @@ func TestBuildPduSessionResourceSetupResponse(t *testing.T) {
 	for _, testCase := range testBuildPduSessionResourceSetupResponseCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			pdu := buildPduSessionResourceSetupResponse(testCase.amfUeNgapId, testCase.ranUeNgapId, testCase.pduSessionId, testCase.transferMessage)
-			encodeData, err := ngap.Encoder(pdu)
+			encodeData, err := pdu.MarshalBinary()
 			if err != nil {
 				t.Fatalf("Failed to encode NGAP pdu session resource setup response: %v", err)
-			} else {
-				decodeData, err := ngap.Decoder(encodeData)
-				if err != nil {
-					t.Fatalf("Failed to decode NGAP pdu session resource setup response: %v", err)
-				} else if !reflect.DeepEqual(pdu, *decodeData) {
-					t.Fatalf("NGAP pdu session resource setup response mismatch")
-				}
+			}
+
+			decodeMsg, err := message.Parse(encodeData)
+			if err != nil {
+				t.Fatalf("Failed to decode NGAP pdu session resource setup response: %v", err)
+			}
+			decodeData, ok := decodeMsg.(*message.PDUSessionResourceSetupResponse)
+			if !ok {
+				t.Fatalf("Decoded message is not PDUSessionResourceSetupResponse: %T", decodeMsg)
+			}
+			if !reflect.DeepEqual(pdu, decodeData) {
+				t.Fatalf("NGAP pdu session resource setup response mismatch")
 			}
 		})
 	}
@@ -343,22 +369,22 @@ var testBuildNgapUeContextReleaseCompleteMessageCases = []struct {
 	amfUeNgapId      int64
 	ranUeNgapId      int64
 	pduSessionIdList []int64
-	plmnId           ngapType.PLMNIdentity
-	tai              ngapType.TAI
+	plmnId           ie.PLMNIdentity
+	tai              ie.TAI
 }{
 	{
 		name:             "testBuildNgapUeContextReleaseCommand",
 		amfUeNgapId:      1,
 		ranUeNgapId:      1,
 		pduSessionIdList: []int64{1},
-		plmnId: ngapType.PLMNIdentity{
+		plmnId: ie.PLMNIdentity{
 			Value: aper.OctetString("\x02\xF8\x39"),
 		},
-		tai: ngapType.TAI{
-			TAC: ngapType.TAC{
+		tai: ie.TAI{
+			TAC: &ie.TAC{
 				Value: aper.OctetString("\x00\x00\x01"),
 			},
-			PLMNIdentity: ngapType.PLMNIdentity{
+			PLMNIdentity: &ie.PLMNIdentity{
 				Value: aper.OctetString("\x02\xF8\x39"),
 			},
 		},
@@ -369,16 +395,21 @@ func TestBuildNgapUeContextReleaseCompleteMessage(t *testing.T) {
 	for _, testCase := range testBuildNgapUeContextReleaseCompleteMessageCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			pdu := buildNgapUeContextReleaseCompleteMessage(testCase.amfUeNgapId, testCase.ranUeNgapId, testCase.pduSessionIdList, testCase.plmnId, testCase.tai, []byte{0x00, 0x03, 0x14})
-			encodeData, err := ngap.Encoder(pdu)
+			encodeData, err := pdu.MarshalBinary()
 			if err != nil {
 				t.Fatalf("Failed to encode NGAP ue context release command: %v", err)
-			} else {
-				decodeData, err := ngap.Decoder(encodeData)
-				if err != nil {
-					t.Fatalf("Failed to decode NGAP ue context release command: %v", err)
-				} else if !reflect.DeepEqual(pdu, *decodeData) {
-					t.Fatalf("NGAP ue context release command mismatch")
-				}
+			}
+
+			decodeMsg, err := message.Parse(encodeData)
+			if err != nil {
+				t.Fatalf("Failed to decode NGAP ue context release command: %v", err)
+			}
+			decodeData, ok := decodeMsg.(*message.UEContextReleaseComplete)
+			if !ok {
+				t.Fatalf("Decoded message is not UEContextReleaseComplete: %T", decodeMsg)
+			}
+			if !reflect.DeepEqual(pdu, decodeData) {
+				t.Fatalf("NGAP ue context release command mismatch")
 			}
 		})
 	}
@@ -402,16 +433,17 @@ func TestBuildPDUSessionResourceModifyIndicationTransfer(t *testing.T) {
 	for _, testCase := range testBuildPDUSessionResourceModifyIndicationTransferCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			transferMessage := buildPDUSessionResourceModifyIndicationTransfer(testCase.dlTeid, testCase.ranN3Ip, testCase.qosId)
-			encodeTransferMessage, err := aper.MarshalWithParams(transferMessage, "valueExt")
+			encodeTransferMessage, err := ie.MarshalBinary(&transferMessage)
 			if err != nil {
 				t.Fatalf("Failed to marshal pdu session resource modify indication transfer message: %v", err)
-			} else {
-				decodeTransferMessage := &ngapType.PDUSessionResourceModifyIndicationTransfer{}
-				if err := aper.UnmarshalWithParams(encodeTransferMessage, decodeTransferMessage, "valueExt"); err != nil {
-					t.Fatalf("Failed to unmarshal pdu session resource modify indication transfer message: %v", err)
-				} else if !reflect.DeepEqual(transferMessage, *decodeTransferMessage) {
-					t.Fatalf("PDU session resource modify indication transfer message mismatch")
-				}
+			}
+
+			decodeTransferMessage := &ie.PDUSessionResourceModifyIndicationTransfer{}
+			if err := ie.UnmarshalBinary(encodeTransferMessage, decodeTransferMessage); err != nil {
+				t.Fatalf("Failed to unmarshal pdu session resource modify indication transfer message: %v", err)
+			}
+			if !reflect.DeepEqual(&transferMessage, decodeTransferMessage) {
+				t.Fatalf("PDU session resource modify indication transfer message mismatch")
 			}
 		})
 	}

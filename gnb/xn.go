@@ -7,10 +7,9 @@ import (
 	"net"
 
 	"github.com/free-ran-ue/free-ran-ue/v2/constant"
-	"github.com/free5gc/aper"
-	"github.com/free5gc/ngap"
-	"github.com/free5gc/ngap/ngapConvert"
-	"github.com/free5gc/ngap/ngapType"
+	"github.com/free5gc/ngap/aper"
+	"github.com/free5gc/ngap/ie"
+	"github.com/free5gc/ngap/message"
 )
 
 type XnPdu struct {
@@ -77,64 +76,66 @@ func xnInterfaceProcessor(conn net.Conn, g *Gnb) {
 	g.XnLog.Tracef("Received XN PDU: %+v", xnPdu)
 	g.XnLog.Debugln("Receive XN PDU")
 
-	ngapPdu, err := ngap.Decoder(xnPdu.Data)
+	ngapMsg, err := message.Parse(xnPdu.Data)
 	if err != nil {
 		g.XnLog.Warnf("Error decoding NGAP PDU: %v", err)
 		return
 	}
 
-	switch ngapPdu.Present {
-	case ngapType.NGAPPDUPresentInitiatingMessage:
-		xnPduPresentInitiatingMessageDispatcher(g, conn, xnPdu.Imsi, ngapPdu)
-	case ngapType.NGAPPDUPresentSuccessfulOutcome:
-		xnPduPresentSuccessfulOutcomeDispatcher(g, conn, xnPdu.Imsi, ngapPdu)
-	default:
-		g.XnLog.Warnf("Unknown NGAP PDU Present: %v, expected %v or %v", ngapPdu.Present, ngapType.NGAPPDUPresentInitiatingMessage, ngapType.NGAPPDUPresentSuccessfulOutcome)
-		return
-	}
-}
-
-func xnPduPresentInitiatingMessageDispatcher(g *Gnb, conn net.Conn, imsi string, ngapPdu *ngapType.NGAPPDU) {
-	switch ngapPdu.InitiatingMessage.ProcedureCode.Value {
-	case ngapType.ProcedureCodePDUSessionResourceSetup:
+	switch msg := ngapMsg.(type) {
+	case *message.PDUSessionResourceSetupRequest:
 		g.XnLog.Infoln("Processing NGAP PDU Session Resource Setup Request")
-		xnPduSessionResourceSetupProcessor(g, conn, imsi, ngapPdu)
-	case ngapType.ProcedureCodePDUSessionResourceModifyIndication:
+		xnPduSessionResourceSetupProcessor(g, conn, xnPdu.Imsi, msg)
+	case *message.PDUSessionResourceModifyIndication:
 		g.XnLog.Infoln("Processing NGAP PDU Session Resource Modify Indication")
-		xnPduSessionResourceModifyIndicationProcessor(g, conn, imsi, ngapPdu)
-	default:
-		g.XnLog.Warnf("Unknown NGAP PDU Procedure Code: %v", ngapPdu.InitiatingMessage.ProcedureCode.Value)
-		return
-	}
-}
-
-func xnPduPresentSuccessfulOutcomeDispatcher(g *Gnb, conn net.Conn, imsi string, ngapPdu *ngapType.NGAPPDU) {
-	switch ngapPdu.SuccessfulOutcome.ProcedureCode.Value {
-	case ngapType.ProcedureCodePDUSessionResourceModifyIndication:
+		xnPduSessionResourceModifyIndicationProcessor(g, conn, xnPdu.Imsi, msg, xnPdu.Data)
+	case *message.PDUSessionResourceModifyConfirm:
 		g.XnLog.Infoln("Processing NGAP PDU Session Resource Modify Confirm")
-		xnPduSessionResourceModifyConfirmProcessor(g, conn, imsi, ngapPdu)
+		xnPduSessionResourceModifyConfirmProcessor(g, conn, xnPdu.Imsi, msg)
 	default:
-		g.XnLog.Warnf("Unknown NGAP PDU Procedure Code: %v", ngapPdu.SuccessfulOutcome.ProcedureCode.Value)
-		return
+		g.XnLog.Warnf("Unknown NGAP PDU message: %T", ngapMsg)
 	}
 }
 
-func xnPduSessionResourceSetupProcessor(g *Gnb, conn net.Conn, imsi string, ngapPduSessionResourceSetup *ngapType.NGAPPDU) {
-	var pduSessionResourceSetupRequestTransfer ngapType.PDUSessionResourceSetupRequestTransfer
+func buildDCQosFlowPerTNLInformationItem(dlTeid []byte, ranN3Ip string) ie.QosFlowPerTNLInformationItem {
+	return ie.QosFlowPerTNLInformationItem{
+		QosFlowPerTNLInformation: &ie.QosFlowPerTNLInformation{
+			UPTransportLayerInformation: &ie.UPTransportLayerInformation{
+				Choice: &ie.GTPTunnel{
+					GTPTEID: &ie.GTPTEID{
+						Value: dlTeid,
+					},
+					TransportLayerAddress: &ie.TransportLayerAddress{
+						Value: ngapConvertIPAddressToNgap(ranN3Ip),
+					},
+				},
+			},
+			AssociatedQosFlowList: &ie.AssociatedQosFlowList{
+				List: []ie.AssociatedQosFlowItem{
+					{
+						QosFlowIdentifier: &ie.QosFlowIdentifier{
+							Value: 1,
+						},
+					},
+				},
+			},
+		},
+	}
+}
 
-	for _, ie := range ngapPduSessionResourceSetup.InitiatingMessage.Value.PDUSessionResourceSetupRequest.ProtocolIEs.List {
-		switch ie.Id.Value {
-		case ngapType.ProtocolIEIDAMFUENGAPID:
-		case ngapType.ProtocolIEIDRANUENGAPID:
-		case ngapType.ProtocolIEIDPDUSessionResourceSetupListSUReq:
-			for _, pduSessionResourceSetupItem := range ie.Value.PDUSessionResourceSetupListSUReq.List {
-				if err := aper.UnmarshalWithParams(pduSessionResourceSetupItem.PDUSessionResourceSetupRequestTransfer, &pduSessionResourceSetupRequestTransfer, "valueExt"); err != nil {
-					g.XnLog.Warnf("Error unmarshal pdu session resource setup request transfer: %v", err)
-					return
-				}
-				g.XnLog.Tracef("Get PDUSessionResourceSetupRequestTransfer: %+v", pduSessionResourceSetupRequestTransfer)
+func xnPduSessionResourceSetupProcessor(g *Gnb, conn net.Conn, imsi string, msg *message.PDUSessionResourceSetupRequest) {
+	var pduSessionResourceSetupRequestTransfer ie.PDUSessionResourceSetupRequestTransfer
+
+	if msg.PDUSessionResourceSetupListSUReq != nil {
+		for _, pduSessionResourceSetupItem := range msg.PDUSessionResourceSetupListSUReq.List {
+			if pduSessionResourceSetupItem.PDUSessionResourceSetupRequestTransfer == nil {
+				continue
 			}
-		case ngapType.ProtocolIEIDUEAggregateMaximumBitRate:
+			if err := ie.UnmarshalBinary(*pduSessionResourceSetupItem.PDUSessionResourceSetupRequestTransfer, &pduSessionResourceSetupRequestTransfer); err != nil {
+				g.XnLog.Warnf("Error unmarshal pdu session resource setup request transfer: %v", err)
+				return
+			}
+			g.XnLog.Tracef("Get PDUSessionResourceSetupRequestTransfer: %+v", pduSessionResourceSetupRequestTransfer)
 		}
 	}
 
@@ -142,35 +143,25 @@ func xnPduSessionResourceSetupProcessor(g *Gnb, conn net.Conn, imsi string, ngap
 	g.xnUeConns.Store(xnUe, struct{}{})
 	g.XnLog.Debugf("Allocated DLTEID for XnUe: %s", hex.EncodeToString(xnUe.GetDlTeid()))
 
-	for _, ie := range pduSessionResourceSetupRequestTransfer.ProtocolIEs.List {
-		switch ie.Id.Value {
-		case ngapType.ProtocolIEIDPDUSessionAggregateMaximumBitRate:
-		case ngapType.ProtocolIEIDULNGUUPTNLInformation:
-		case ngapType.ProtocolIEIDAdditionalULNGUUPTNLInformation:
-			xnUe.SetUlTeid(ie.Value.AdditionalULNGUUPTNLInformation.List[0].NGUUPTNLInformation.GTPTunnel.GTPTEID.Value)
-		case ngapType.ProtocolIEIDPDUSessionType:
-		case ngapType.ProtocolIEIDQosFlowSetupRequestList:
+	if pduSessionResourceSetupRequestTransfer.ProtocolIEs != nil {
+		for _, item := range pduSessionResourceSetupRequestTransfer.ProtocolIEs.List {
+			if item.AdditionalULNGUUPTNLInformation == nil || len(item.AdditionalULNGUUPTNLInformation.List) == 0 {
+				continue
+			}
+			nguUpTnlInformation := item.AdditionalULNGUUPTNLInformation.List[0].NGUUPTNLInformation
+			if nguUpTnlInformation == nil {
+				continue
+			}
+			if gtpTunnel, ok := nguUpTnlInformation.Choice.(*ie.GTPTunnel); ok && gtpTunnel.GTPTEID != nil {
+				xnUe.SetUlTeid(gtpTunnel.GTPTEID.Value)
+			}
 		}
 	}
 
 	// DC QoS Flow per TNL Information
-	dcQosFlowPerTNLInformationItem := ngapType.QosFlowPerTNLInformationItem{}
-	dcQosFlowPerTNLInformationItem.QosFlowPerTNLInformation.UPTransportLayerInformation.Present = ngapType.UPTransportLayerInformationPresentGTPTunnel
+	dcQosFlowPerTNLInformationItem := buildDCQosFlowPerTNLInformationItem(xnUe.GetDlTeid(), g.ranN3Ip)
 
-	// DC Transport Layer Information in QoS Flow per TNL Information
-	dcUpTransportLayerInformation := &dcQosFlowPerTNLInformationItem.QosFlowPerTNLInformation.UPTransportLayerInformation
-	dcUpTransportLayerInformation.Present = ngapType.UPTransportLayerInformationPresentGTPTunnel
-	dcUpTransportLayerInformation.GTPTunnel = new(ngapType.GTPTunnel)
-	dcUpTransportLayerInformation.GTPTunnel.GTPTEID.Value = xnUe.GetDlTeid()
-	dcUpTransportLayerInformation.GTPTunnel.TransportLayerAddress = ngapConvert.IPAddressToNgap(g.ranN3Ip, "")
-
-	// DC Associated QoS Flow List in QoS Flow per TNL Information
-	dcAssociatedQosFlowList := &dcQosFlowPerTNLInformationItem.QosFlowPerTNLInformation.AssociatedQosFlowList
-	dcAssociatedQosFlowItem := ngapType.AssociatedQosFlowItem{}
-	dcAssociatedQosFlowItem.QosFlowIdentifier.Value = 1
-	dcAssociatedQosFlowList.List = append(dcAssociatedQosFlowList.List, dcAssociatedQosFlowItem)
-
-	dcQosFlowPerTNLInformationMarshal, err := aper.MarshalWithParams(dcQosFlowPerTNLInformationItem, "valueExt")
+	dcQosFlowPerTNLInformationMarshal, err := ie.MarshalBinary(&dcQosFlowPerTNLInformationItem)
 	if err != nil {
 		g.XnLog.Warnf("Error marshal dc qos flow per tnl information: %v", err)
 		return
@@ -201,18 +192,11 @@ func xnPduSessionResourceSetupProcessor(g *Gnb, conn net.Conn, imsi string, ngap
 	g.XnLog.Debugf("Sent DL TEID %s to imsiTodlTeidAndUeType", hex.EncodeToString(xnUe.GetDlTeid()))
 }
 
-func xnPduSessionResourceModifyIndicationProcessor(g *Gnb, conn net.Conn, imsi string, ngapPduSessionResourceModifyIndication *ngapType.NGAPPDU) {
-	if xnReleaseUeProcessor(g, conn, imsi, ngapPduSessionResourceModifyIndication) {
+func xnPduSessionResourceModifyIndicationProcessor(g *Gnb, conn net.Conn, imsi string, msg *message.PDUSessionResourceModifyIndication, ngapRaw []byte) {
+	if xnReleaseUeProcessor(g, conn, imsi) {
 		g.XnLog.Infof("XnUe released for imsi: %s", imsi)
-		ngapPdu, err := ngap.Encoder(*ngapPduSessionResourceModifyIndication)
-		if err != nil {
-			g.XnLog.Warnf("Error encode ngap pdu: %v", err)
-			return
-		}
-		g.XnLog.Tracef("Get NGAP PDU: %+v", ngapPdu)
-		g.XnLog.Debugln("Get NGAP PDU")
 
-		xnPdu := NewXnPdu(imsi, ngapPdu)
+		xnPdu := NewXnPdu(imsi, ngapRaw)
 		xnPduBytes, err := xnPdu.Marshal()
 		if err != nil {
 			g.XnLog.Warnf("Error marshal xn pdu: %v", err)
@@ -230,31 +214,25 @@ func xnPduSessionResourceModifyIndicationProcessor(g *Gnb, conn net.Conn, imsi s
 		return
 	}
 
-	initiatingMessage := ngapPduSessionResourceModifyIndication.InitiatingMessage
-	indication := initiatingMessage.Value.PDUSessionResourceModifyIndication
-
-	var pduSessionResourceModifyIndicationIE *ngapType.PDUSessionResourceModifyIndicationIEs
-
-	for _, ie := range indication.ProtocolIEs.List {
-		switch ie.Id.Value {
-		case ngapType.ProtocolIEIDAMFUENGAPID:
-		case ngapType.ProtocolIEIDRANUENGAPID:
-		case ngapType.ProtocolIEIDPDUSessionResourceModifyListModInd:
-			pduSessionResourceModifyIndicationIE = &ie
-		}
+	if msg.PDUSessionResourceModifyListModInd == nil {
+		g.XnLog.Warnf("Error pdu session resource modify indication: missing mandatory IE")
+		return
 	}
 
-	var pduSessionResourceModifyIndicationTransferMessageRaw []byte
-
-	for _, pduSessionResourceModifyItem := range pduSessionResourceModifyIndicationIE.Value.PDUSessionResourceModifyListModInd.List {
-		switch pduSessionResourceModifyItem.PDUSessionID.Value {
-		case 4:
-			pduSessionResourceModifyIndicationTransferMessageRaw = pduSessionResourceModifyItem.PDUSessionResourceModifyIndicationTransfer
+	itemIndex := -1
+	for i, item := range msg.PDUSessionResourceModifyListModInd.List {
+		if item.PDUSessionID != nil && item.PDUSessionID.Value == constant.PDU_SESSION_ID {
+			itemIndex = i
+			break
 		}
 	}
+	if itemIndex == -1 || msg.PDUSessionResourceModifyListModInd.List[itemIndex].PDUSessionResourceModifyIndicationTransfer == nil {
+		g.XnLog.Warnf("Error pdu session resource modify indication: pdu session %d not found", constant.PDU_SESSION_ID)
+		return
+	}
 
-	pduSessionResourceModifyIndicationTransfer := ngapType.PDUSessionResourceModifyIndicationTransfer{}
-	if err := aper.UnmarshalWithParams(pduSessionResourceModifyIndicationTransferMessageRaw, &pduSessionResourceModifyIndicationTransfer, "valueExt"); err != nil {
+	var pduSessionResourceModifyIndicationTransfer ie.PDUSessionResourceModifyIndicationTransfer
+	if err := ie.UnmarshalBinary(*msg.PDUSessionResourceModifyListModInd.List[itemIndex].PDUSessionResourceModifyIndicationTransfer, &pduSessionResourceModifyIndicationTransfer); err != nil {
 		g.XnLog.Warnf("Error unmarshal pdu session resource modify indication transfer: %v", err)
 		return
 	}
@@ -265,41 +243,24 @@ func xnPduSessionResourceModifyIndicationProcessor(g *Gnb, conn net.Conn, imsi s
 	g.XnLog.Debugf("Allocated DLTEID for XnUe: %s", hex.EncodeToString(xnUe.GetDlTeid()))
 
 	// DC QoS Flow per TNL Information
-	DCQosFlowPerTNLInformationItem := ngapType.QosFlowPerTNLInformationItem{}
-	DCQosFlowPerTNLInformationItem.QosFlowPerTNLInformation.UPTransportLayerInformation.Present = ngapType.UPTransportLayerInformationPresentGTPTunnel
-
-	// DC Transport Layer Information in QoS Flow per TNL Information
-	DCUpTransportLayerInformation := &DCQosFlowPerTNLInformationItem.QosFlowPerTNLInformation.UPTransportLayerInformation
-	DCUpTransportLayerInformation.Present = ngapType.UPTransportLayerInformationPresentGTPTunnel
-	DCUpTransportLayerInformation.GTPTunnel = new(ngapType.GTPTunnel)
-	DCUpTransportLayerInformation.GTPTunnel.GTPTEID.Value = xnUe.GetDlTeid()
-	DCUpTransportLayerInformation.GTPTunnel.TransportLayerAddress = ngapConvert.IPAddressToNgap(g.ranN3Ip, "")
-
-	// DC Associated QoS Flow List in QoS Flow per TNL Information
-	DCAssociatedQosFlowList := &DCQosFlowPerTNLInformationItem.QosFlowPerTNLInformation.AssociatedQosFlowList
-	DCAssociatedQosFlowItem := ngapType.AssociatedQosFlowItem{}
-	DCAssociatedQosFlowItem.QosFlowIdentifier.Value = 1
-	DCAssociatedQosFlowList.List = append(DCAssociatedQosFlowList.List, DCAssociatedQosFlowItem)
+	dcQosFlowPerTNLInformationItem := buildDCQosFlowPerTNLInformationItem(xnUe.GetDlTeid(), g.ranN3Ip)
 
 	// Additional DL QoS Flow per TNL Information
-	pduSessionResourceModifyIndicationTransfer.AdditionalDLQosFlowPerTNLInformation = new(ngapType.QosFlowPerTNLInformationList)
-	pduSessionResourceModifyIndicationTransfer.AdditionalDLQosFlowPerTNLInformation.List = append(pduSessionResourceModifyIndicationTransfer.AdditionalDLQosFlowPerTNLInformation.List, DCQosFlowPerTNLInformationItem)
+	pduSessionResourceModifyIndicationTransfer.AdditionalDLQosFlowPerTNLInformation = &ie.QosFlowPerTNLInformationList{
+		List: []ie.QosFlowPerTNLInformationItem{dcQosFlowPerTNLInformationItem},
+	}
 
-	pduSessionResourceModifyIndicationTransferMarshal, err := aper.MarshalWithParams(pduSessionResourceModifyIndicationTransfer, "valueExt")
+	pduSessionResourceModifyIndicationTransferMarshal, err := ie.MarshalBinary(&pduSessionResourceModifyIndicationTransfer)
 	if err != nil {
 		g.XnLog.Warnf("Error marshal pdu session resource modify indication transfer: %v", err)
 		return
 	}
 
-	for i := range pduSessionResourceModifyIndicationIE.Value.PDUSessionResourceModifyListModInd.List {
-		switch pduSessionResourceModifyIndicationIE.Value.PDUSessionResourceModifyListModInd.List[i].PDUSessionID.Value {
-		case 4:
-			pduSessionResourceModifyIndicationIE.Value.PDUSessionResourceModifyListModInd.List[i].PDUSessionResourceModifyIndicationTransfer = pduSessionResourceModifyIndicationTransferMarshal
-		}
-	}
+	transfer := aper.OctetString(pduSessionResourceModifyIndicationTransferMarshal)
+	msg.PDUSessionResourceModifyListModInd.List[itemIndex].PDUSessionResourceModifyIndicationTransfer = &transfer
 	g.XnLog.Tracef("Get PDUSessionResourceModifyIndicationTransfer: %+v", pduSessionResourceModifyIndicationTransfer)
 
-	ngapPdu, err := ngap.Encoder(*ngapPduSessionResourceModifyIndication)
+	ngapPdu, err := msg.MarshalBinary()
 	if err != nil {
 		g.XnLog.Warnf("Error encode ngap pdu: %v", err)
 		return
@@ -321,32 +282,29 @@ func xnPduSessionResourceModifyIndicationProcessor(g *Gnb, conn net.Conn, imsi s
 	g.XnLog.Debugln("Send NGAP PDU Session Resource Modify Indication to XN")
 }
 
-func xnPduSessionResourceModifyConfirmProcessor(g *Gnb, conn net.Conn, imsi string, ngapPduSessionResourceModifyConfirm *ngapType.NGAPPDU) {
-	var pduSessionResourceModifyListModCfm *ngapType.PDUSessionResourceModifyListModCfm
-	var pduSessionResourceModifyConfirmtransferRaw aper.OctetString
-
-	for _, ie := range ngapPduSessionResourceModifyConfirm.SuccessfulOutcome.Value.PDUSessionResourceModifyConfirm.ProtocolIEs.List {
-		switch ie.Id.Value {
-		case ngapType.ProtocolIEIDAMFUENGAPID:
-		case ngapType.ProtocolIEIDRANUENGAPID:
-		case ngapType.ProtocolIEIDPDUSessionResourceModifyListModCfm:
-			pduSessionResourceModifyListModCfm = ie.Value.PDUSessionResourceModifyListModCfm
-		}
+func xnPduSessionResourceModifyConfirmProcessor(g *Gnb, conn net.Conn, imsi string, msg *message.PDUSessionResourceModifyConfirm) {
+	if msg.PDUSessionResourceModifyListModCfm == nil {
+		g.XnLog.Warnf("Error pdu session resource modify confirm: missing mandatory IE")
+		return
 	}
 
-	for _, pduSessionResourceModifyItem := range pduSessionResourceModifyListModCfm.List {
-		switch pduSessionResourceModifyItem.PDUSessionID.Value {
-		case 4:
-			pduSessionResourceModifyConfirmtransferRaw = pduSessionResourceModifyItem.PDUSessionResourceModifyConfirmTransfer
+	var pduSessionResourceModifyConfirmTransferRaw *aper.OctetString
+	for _, pduSessionResourceModifyItem := range msg.PDUSessionResourceModifyListModCfm.List {
+		if pduSessionResourceModifyItem.PDUSessionID != nil && pduSessionResourceModifyItem.PDUSessionID.Value == constant.PDU_SESSION_ID {
+			pduSessionResourceModifyConfirmTransferRaw = pduSessionResourceModifyItem.PDUSessionResourceModifyConfirmTransfer
 		}
 	}
+	if pduSessionResourceModifyConfirmTransferRaw == nil {
+		g.XnLog.Warnf("Error pdu session resource modify confirm: pdu session %d not found", constant.PDU_SESSION_ID)
+		return
+	}
 
-	pduSessionResourceModifyConfirmtransfer := ngapType.PDUSessionResourceModifyConfirmTransfer{}
-	if err := aper.UnmarshalWithParams(pduSessionResourceModifyConfirmtransferRaw, &pduSessionResourceModifyConfirmtransfer, "valueExt"); err != nil {
+	pduSessionResourceModifyConfirmTransfer := ie.PDUSessionResourceModifyConfirmTransfer{}
+	if err := ie.UnmarshalBinary(*pduSessionResourceModifyConfirmTransferRaw, &pduSessionResourceModifyConfirmTransfer); err != nil {
 		g.XnLog.Warnf("Error unmarshal pdu session resource modify confirm transfer: %v", err)
 		return
 	}
-	g.XnLog.Tracef("Get PDUSessionResourceModifyConfirmTransfer: %+v", pduSessionResourceModifyConfirmtransfer)
+	g.XnLog.Tracef("Get PDUSessionResourceModifyConfirmTransfer: %+v", pduSessionResourceModifyConfirmTransfer)
 
 	var xnUe *XnUe
 
@@ -363,7 +321,11 @@ func xnPduSessionResourceModifyConfirmProcessor(g *Gnb, conn net.Conn, imsi stri
 		return
 	}
 
-	xnUe.SetUlTeid(pduSessionResourceModifyConfirmtransfer.ULNGUUPTNLInformation.GTPTunnel.GTPTEID.Value)
+	if pduSessionResourceModifyConfirmTransfer.ULNGUUPTNLInformation != nil {
+		if gtpTunnel, ok := pduSessionResourceModifyConfirmTransfer.ULNGUUPTNLInformation.Choice.(*ie.GTPTunnel); ok && gtpTunnel.GTPTEID != nil {
+			xnUe.SetUlTeid(gtpTunnel.GTPTEID.Value)
+		}
+	}
 
 	xnPdu := NewXnPdu(imsi, []byte{})
 	xnPduBytes, err := xnPdu.Marshal()
@@ -390,7 +352,7 @@ func xnPduSessionResourceModifyConfirmProcessor(g *Gnb, conn net.Conn, imsi stri
 	g.XnLog.Debugf("Sent DL TEID %s to imsiTodlTeidAndUeType", hex.EncodeToString(xnUe.GetDlTeid()))
 }
 
-func xnReleaseUeProcessor(g *Gnb, conn net.Conn, imsi string, ngapPduSessionResourceModifyConfirm *ngapType.NGAPPDU) bool {
+func xnReleaseUeProcessor(g *Gnb, conn net.Conn, imsi string) bool {
 	var xnUe *XnUe
 
 	g.xnUeConns.Range(func(key, value interface{}) bool {

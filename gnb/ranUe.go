@@ -7,8 +7,7 @@ import (
 	"sync"
 
 	"github.com/free-ran-ue/free-ran-ue/v2/constant"
-	"github.com/free5gc/aper"
-	"github.com/free5gc/nas/nasType"
+	"github.com/free5gc/nas/ie"
 )
 
 type RanUeNgapIdGenerator struct {
@@ -48,10 +47,10 @@ type RanUe struct {
 	amfUeNgapId int64
 	ranUeNgapId int64
 
-	mobileIdentity5GS nasType.MobileIdentity5GS
+	mobileIdentity5GS *ie.MobileId5GS
 
-	ulTeid aper.OctetString
-	dlTeid aper.OctetString
+	ulTeid []byte
+	dlTeid []byte
 
 	n1Conn           net.Conn
 	dataPlaneAddress *net.UDPAddr
@@ -74,7 +73,7 @@ func NewRanUe(n1Conn net.Conn, ranUeNgapIdGenerator *RanUeNgapIdGenerator) *RanU
 		amfUeNgapId: -1,
 		ranUeNgapId: ranUeId,
 
-		mobileIdentity5GS: nasType.MobileIdentity5GS{},
+		mobileIdentity5GS: &ie.MobileId5GS{},
 
 		n1Conn: n1Conn,
 
@@ -104,7 +103,7 @@ func (r *RanUe) GetRanUeId() int64 {
 }
 
 func (r *RanUe) GetMobileIdentityIMSI() string {
-	suci := r.mobileIdentity5GS.GetSUCI()
+	suci := r.mobileIdentity5GS.IdStr()
 	parts := strings.Split(suci, "-")
 	if len(parts) < 8 {
 		return constant.UE_IMSI_PREFIX
@@ -114,11 +113,11 @@ func (r *RanUe) GetMobileIdentityIMSI() string {
 	return fmt.Sprintf("%s%s%s%s", constant.UE_IMSI_PREFIX, parts[2], parts[3], parts[7])
 }
 
-func (r *RanUe) GetUlTeid() aper.OctetString {
+func (r *RanUe) GetUlTeid() []byte {
 	return r.ulTeid
 }
 
-func (r *RanUe) GetDlTeid() aper.OctetString {
+func (r *RanUe) GetDlTeid() []byte {
 	return r.dlTeid
 }
 
@@ -138,15 +137,15 @@ func (r *RanUe) SetRanUeId(ranUeId int64) {
 	r.ranUeNgapId = ranUeId
 }
 
-func (r *RanUe) SetMobileIdentity5GS(mobileIdentity5GS nasType.MobileIdentity5GS) {
+func (r *RanUe) SetMobileIdentity5GS(mobileIdentity5GS *ie.MobileId5GS) {
 	r.mobileIdentity5GS = mobileIdentity5GS
 }
 
-func (r *RanUe) SetUlTeid(ulTeid aper.OctetString) {
+func (r *RanUe) SetUlTeid(ulTeid []byte) {
 	r.ulTeid = ulTeid
 }
 
-func (r *RanUe) SetDlTeid(dlTeid aper.OctetString) {
+func (r *RanUe) SetDlTeid(dlTeid []byte) {
 	r.dlTeid = dlTeid
 }
 

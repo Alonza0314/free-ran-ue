@@ -2,6 +2,8 @@ package gnb
 
 import (
 	"testing"
+
+	"github.com/free5gc/nas/ie"
 )
 
 var testGetMobileIdentityIMSICases = []struct {
@@ -24,8 +26,12 @@ var testGetMobileIdentityIMSICases = []struct {
 func TestGetMobileIdentityIMSI(t *testing.T) {
 	for _, tc := range testGetMobileIdentityIMSICases {
 		t.Run(tc.name, func(t *testing.T) {
-			r := &RanUe{}
-			r.mobileIdentity5GS.Buffer = tc.buffer
+			mobileIdentity5GS := new(ie.MobileId5GS)
+			if err := mobileIdentity5GS.UnmarshalBinary(tc.buffer); err != nil {
+				t.Fatalf("unexpected error unmarshaling mobile identity: %v", err)
+			}
+
+			r := &RanUe{mobileIdentity5GS: mobileIdentity5GS}
 
 			if got := r.GetMobileIdentityIMSI(); got != tc.expected {
 				t.Fatalf("unexpected IMSI: got %s, want %s", got, tc.expected)

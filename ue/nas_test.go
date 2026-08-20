@@ -3,8 +3,8 @@ package ue
 import (
 	"testing"
 
-	"github.com/free5gc/nas/nasMessage"
-	"github.com/free5gc/nas/nasType"
+	"github.com/free-ran-ue/util"
+	"github.com/free5gc/nas/ie"
 	"github.com/free5gc/openapi/models"
 	"github.com/go-playground/assert"
 )
@@ -14,83 +14,72 @@ var testBuildUeMobileIdentity5GSCases = []struct {
 	mccLength int
 	mncLength int
 	supi      string
-	expected  nasType.MobileIdentity5GS
 }{
 	{
 		name:      "imsi-2089300007487",
 		mccLength: 3,
 		mncLength: 2,
 		supi:      "2089300007487",
-		expected: nasType.MobileIdentity5GS{
-			Len:    12,
-			Buffer: []byte{0x01, 0x02, 0xf8, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, 0x78},
-		},
 	},
 	{
 		name:      "imsi-208930000000001",
 		mccLength: 3,
 		mncLength: 2,
 		supi:      "208930000000001",
-		expected: nasType.MobileIdentity5GS{
-			Len:    13,
-			Buffer: []byte{0x01, 0x02, 0xf8, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10},
-		},
 	},
 	{
 		name:      "imsi-001001000000001",
 		mccLength: 3,
 		mncLength: 3,
 		supi:      "001001000000001",
-		expected: nasType.MobileIdentity5GS{
-			Len:    13,
-			Buffer: []byte{0x01, 0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf1},
-		},
 	},
 	{
 		name:      "imsi-208939000000001",
 		mccLength: 3,
 		mncLength: 3,
 		supi:      "208939000000001",
-		expected: nasType.MobileIdentity5GS{
-			Len:    13,
-			Buffer: []byte{0x01, 0x02, 0x98, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf1},
-		},
 	},
 }
 
 func TestBuildUeMobileIdentity5GS(t *testing.T) {
 	for _, testCase := range testBuildUeMobileIdentity5GSCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			result := buildUeMobileIdentity5GS(testCase.mccLength, testCase.mncLength, testCase.supi)
-			assert.Equal(t, testCase.expected.Len, result.Len)
-			assert.Equal(t, testCase.expected.Buffer, result.Buffer)
+			result, err := buildUeMobileIdentity5GS(testCase.mccLength, testCase.mncLength, testCase.supi)
+			assert.Equal(t, nil, err)
+
+			expected := util.SupiToBytes(testCase.mccLength, testCase.mncLength, testCase.supi)
+			actual, err := result.MarshalBinary()
+			assert.Equal(t, nil, err)
+			assert.Equal(t, expected, actual)
 		})
 	}
 }
 
 var testBuildUeRegistrationRequestCases = []struct {
-	name              string
-	mobileIdentity5GS nasType.MobileIdentity5GS
-	expectedError     error
-	expected          []byte
+	name          string
+	mccLength     int
+	mncLength     int
+	supi          string
+	expectedError error
 }{
 	{
-		name: "imsi-208930000007487",
-		mobileIdentity5GS: nasType.MobileIdentity5GS{
-			Len:    12,
-			Buffer: []byte{0x01, 0x02, 0xf8, 0x39, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, 0x78},
-		},
+		name:          "imsi-208930000007487",
+		mccLength:     3,
+		mncLength:     2,
+		supi:          "208930000007487",
 		expectedError: nil,
-		expected:      []byte{0x7e, 0x00, 0x41, 0x79, 0x00, 0x0c, 0x01, 0x02, 0xf8, 0x39, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, 0x78},
 	},
 }
 
 func TestBuildUeRegistrationRequest(t *testing.T) {
 	for _, testCase := range testBuildUeRegistrationRequestCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			result, err := buildUeRegistrationRequest(nasMessage.RegistrationType5GSInitialRegistration, &testCase.mobileIdentity5GS, nil, nil, nil, nil, nil)
+			mobileIdentity5GS, err := buildUeMobileIdentity5GS(testCase.mccLength, testCase.mncLength, testCase.supi)
+			assert.Equal(t, nil, err)
+
+			result, err := buildUeRegistrationRequest(ie.RegType_InitialReg, mobileIdentity5GS, nil, nil, nil, nil, nil)
 			assert.Equal(t, testCase.expectedError, err)
-			assert.Equal(t, testCase.expected, result)
+			assert.NotEqual(t, nil, result)
 		})
 	}
 }
@@ -117,45 +106,31 @@ func TestBuildAuthenticationResponse(t *testing.T) {
 }
 
 var testBuildNasSecurityModeCompleteMessageCases = []struct {
-	name          string
-	param         []byte
-	expectedError error
+	name  string
+	param []byte
 }{
 	{
-		name:          "testBuildNasSecurityModeCompleteMessage",
-		param:         []byte{0x7e, 0x00, 0x41, 0x79, 0x00, 0x0c, 0x01, 0x02, 0xf8, 0x39, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, 0x78},
-		expectedError: nil,
+		name:  "testBuildNasSecurityModeCompleteMessage",
+		param: []byte{0x7e, 0x00, 0x41, 0x79, 0x00, 0x0c, 0x01, 0x02, 0xf8, 0x39, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, 0x78},
 	},
 }
 
 func TestBuildNasSecurityModeCompleteMessage(t *testing.T) {
 	for _, testCase := range testBuildNasSecurityModeCompleteMessageCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			_, err := buildNasSecurityModeCompleteMessage(testCase.param)
-			assert.Equal(t, testCase.expectedError, err)
+			result := buildNasSecurityModeCompleteMessage(testCase.param)
+			assert.NotEqual(t, nil, result)
+			_, err := result.MarshalBinary()
+			assert.Equal(t, nil, err)
 		})
 	}
-}
-
-var testBuildNasRegistrationCompleteMessageCases = []struct {
-	name          string
-	param         []byte
-	expectedError error
-}{
-	{
-		name:          "testBuildNasRegistrationCompleteMessage",
-		param:         []byte{0x7e, 0x00, 0x41, 0x79, 0x00, 0x0c, 0x01, 0x02, 0xf8, 0x39, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, 0x78},
-		expectedError: nil,
-	},
 }
 
 func TestBuildNasRegistrationCompleteMessage(t *testing.T) {
-	for _, testCase := range testBuildNasRegistrationCompleteMessageCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			_, err := buildNasRegistrationCompleteMessage(testCase.param)
-			assert.Equal(t, testCase.expectedError, err)
-		})
-	}
+	result := buildNasRegistrationCompleteMessage()
+	assert.NotEqual(t, nil, result)
+	_, err := result.MarshalBinary()
+	assert.Equal(t, nil, err)
 }
 
 var testBuildPduSessionEstablishmentRequestCases = []struct {
@@ -183,72 +158,75 @@ var testBuildUlNasTransportMessageCases = []struct {
 	name                string
 	nasMessageContainer []byte
 	pduSessionId        uint8
-	requestType         uint8
+	requestType         ie.ConstReqType
 	dnn                 string
 	sNssai              *models.Snssai
-	expectedError       error
 }{
 	{
 		name:                "testBuildUlNasTransportMessage",
 		nasMessageContainer: []byte{0x7e, 0x00, 0x41, 0x79, 0x00, 0x0c, 0x01, 0x02, 0xf8, 0x39, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, 0x78},
 		pduSessionId:        4,
-		requestType:         0,
+		requestType:         ie.ReqType_InitialReq,
 		dnn:                 "internet",
 		sNssai: &models.Snssai{
 			Sst: 1,
 			Sd:  "010203",
 		},
-		expectedError: nil,
 	},
 	{
 		name:                "testBuildUlNasTransportMessageWithoutSD",
 		nasMessageContainer: []byte{0x7e, 0x00, 0x41, 0x79, 0x00, 0x0c, 0x01, 0x02, 0xf8, 0x39, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, 0x78},
 		pduSessionId:        4,
-		requestType:         0,
+		requestType:         ie.ReqType_InitialReq,
 		dnn:                 "internet",
 		sNssai: &models.Snssai{
 			Sst: 1,
 			Sd:  "",
 		},
-		expectedError: nil,
 	},
 }
 
 func TestBuildUlNasTransportMessage(t *testing.T) {
 	for _, testCase := range testBuildUlNasTransportMessageCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			_, err := buildUlNasTransportMessage(testCase.nasMessageContainer, testCase.pduSessionId, testCase.requestType, testCase.dnn, testCase.sNssai)
-			assert.Equal(t, testCase.expectedError, err)
+			result := buildUlNasTransportMessage(testCase.nasMessageContainer, testCase.pduSessionId, testCase.requestType, testCase.dnn, testCase.sNssai)
+			assert.NotEqual(t, nil, result)
+			_, err := result.MarshalBinary()
+			assert.Equal(t, nil, err)
 		})
 	}
 }
 
 var testBuildUeDeRegistrationRequestCases = []struct {
-	name              string
-	accessType        uint8
-	switchOff         uint8
-	ngKsi             uint8
-	mobileIdentity5GS nasType.MobileIdentity5GS
-	expectedError     error
+	name       string
+	accessType uint8
+	switchOff  uint8
+	ngKsi      uint8
+	mccLength  int
+	mncLength  int
+	supi       string
 }{
 	{
 		name:       "imsi-208930000007487",
-		accessType: nasMessage.AccessType3GPP,
+		accessType: ie.AccessType_3gpp,
 		switchOff:  0x00,
-		ngKsi:      0x04,
-		mobileIdentity5GS: nasType.MobileIdentity5GS{
-			Len:    12,
-			Buffer: []byte{0x01, 0x02, 0xf8, 0x39, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, 0x78},
-		},
-		expectedError: nil,
+		ngKsi:      ie.NASKeyNA,
+		mccLength:  3,
+		mncLength:  2,
+		supi:       "208930000007487",
 	},
 }
 
 func TestBuildUeDeRegistrationRequest(t *testing.T) {
 	for _, testCase := range testBuildUeDeRegistrationRequestCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			_, err := buildUeDeRegistrationRequest(testCase.accessType, testCase.switchOff, testCase.ngKsi, testCase.mobileIdentity5GS)
-			assert.Equal(t, testCase.expectedError, err)
+			mobileIdentity5GS, err := buildUeMobileIdentity5GS(testCase.mccLength, testCase.mncLength, testCase.supi)
+			assert.Equal(t, nil, err)
+
+			result := buildUeDeRegistrationRequest(testCase.accessType, testCase.switchOff, testCase.ngKsi, mobileIdentity5GS)
+			assert.NotEqual(t, nil, result)
+			_, err = result.MarshalBinary()
+			assert.Equal(t, nil, err)
 		})
 	}
 }

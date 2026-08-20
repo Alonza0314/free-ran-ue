@@ -1,455 +1,244 @@
 package ue
 
 import (
-	"bytes"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/free-ran-ue/util"
-	"github.com/free5gc/nas"
-	"github.com/free5gc/nas/nasConvert"
-	"github.com/free5gc/nas/nasMessage"
-	"github.com/free5gc/nas/nasType"
-	"github.com/free5gc/nas/security"
+	"github.com/free5gc/nas/ie"
+	"github.com/free5gc/nas/message"
 	"github.com/free5gc/openapi/models"
 )
 
-func nasDecode(ue *Ue, securityHeaderType uint8, payload []byte) (*nas.Message, error) {
+func nasDecode(ue *Ue, payload []byte) (message.Message, error) {
 	if payload == nil {
 		return nil, errors.New("nas payload is nil")
 	}
 
-	msg := new(nas.Message)
-	msg.SecurityHeaderType = uint8(nas.GetSecurityHeaderType(payload) & 0x0f)
-	if securityHeaderType == nas.SecurityHeaderTypePlainNas {
-		return msg, msg.PlainNasDecode(&payload)
-	} else if ue.integrityAlgorithm == security.AlgIntegrity128NIA0 {
-		payload = payload[3:]
-		if err := security.NASEncrypt(ue.cipheringAlgorithm, ue.kNasEnc, ue.dlCount.Get(), ue.getBearerType(), security.DirectionDownlink, payload); err != nil {
-			return nil, err
-		}
-		return msg, msg.PlainNasDecode(&payload)
-	} else {
-		securityHeader := payload[0:6]
-		sequenceNumber := payload[6]
-		receivedMac32 := securityHeader[2:]
-
-		payload = payload[6:]
-
-		ciphered := false
-		switch msg.SecurityHeaderType {
-		case nas.SecurityHeaderTypeIntegrityProtected:
-		case nas.SecurityHeaderTypeIntegrityProtectedAndCiphered:
-			ciphered = true
-		case nas.SecurityHeaderTypeIntegrityProtectedWithNew5gNasSecurityContext:
-			ue.dlCount.Set(0, 0)
-		case nas.SecurityHeaderTypeIntegrityProtectedAndCipheredWithNew5gNasSecurityContext:
-			ciphered = true
-			ue.dlCount.Set(0, 0)
-		default:
-			return nil, fmt.Errorf("wrong security header type: 0x%0x", msg.SecurityHeader.SecurityHeaderType)
-		}
-
-		if ue.dlCount.SQN() > sequenceNumber {
-			ue.dlCount.SetOverflow(ue.dlCount.Overflow() + 1)
-		}
-		ue.dlCount.SetSQN(sequenceNumber)
-
-		if mac32, err := security.NASMacCalculate(ue.integrityAlgorithm, ue.kNasInt, ue.dlCount.Get(), ue.getBearerType(), security.DirectionDownlink, payload); err != nil {
-			return nil, err
-		} else {
-			if !reflect.DeepEqual(mac32, receivedMac32) {
-				return nil, fmt.Errorf("NAS MAC verification failed(0x%x != 0x%x)", mac32, receivedMac32)
-			}
-		}
-
-		payload = payload[1:]
-		if ciphered {
-			if err := security.NASEncrypt(ue.cipheringAlgorithm, ue.kNasEnc, ue.dlCount.Get(), ue.getBearerType(),
-				security.DirectionDownlink, payload); err != nil {
-				return nil, err
-			}
-		}
-
-		return msg, msg.PlainNasDecode(&payload)
-	}
+	return message.Parse(payload, ue.secCtx)
 }
 
-func nasEncode(nasMessage *nas.Message, securityContextAvailable bool, newSecurityContext bool, ue *Ue) ([]byte, error) {
-	if nasMessage == nil {
+func nasEncode(m message.Message, sc *message.SecCtx, hdrType message.SecHdrType) ([]byte, error) {
+	if m == nil {
 		return nil, errors.New("nasMessage is nil")
 	}
 
-	if !securityContextAvailable {
-		return nasMessage.PlainNasEncode()
-	}
-
-	if newSecurityContext {
-		ue.ulCount.Set(0, 0)
-		ue.dlCount.Set(0, 0)
-	}
-
-	sequenceNumber := ue.ulCount.SQN()
-	payload, err := nasMessage.PlainNasEncode()
-	if err != nil {
-		return nil, err
-	}
-	if nasMessage.SecurityHeader.SecurityHeaderType != nas.SecurityHeaderTypeIntegrityProtected && nasMessage.SecurityHeader.SecurityHeaderType != nas.SecurityHeaderTypePlainNas {
-		if err = security.NASEncrypt(ue.cipheringAlgorithm, ue.kNasEnc, ue.ulCount.Get(), ue.getBearerType(), security.DirectionUplink, payload); err != nil {
-			return nil, err
-		}
-	}
-
-	payload = append([]byte{sequenceNumber}, payload[:]...)
-
-	mac32, err := security.NASMacCalculate(ue.integrityAlgorithm, ue.kNasInt, ue.ulCount.Get(), ue.getBearerType(), security.DirectionUplink, payload)
-	if err != nil {
-		return nil, err
-	}
-	payload = append(mac32, payload[:]...)
-
-	msgSecurityHeader := []byte{nasMessage.SecurityHeader.ProtocolDiscriminator, nasMessage.SecurityHeader.SecurityHeaderType}
-	payload = append(msgSecurityHeader, payload[:]...)
-
-	return payload, nil
+	return message.Marshal(m, sc, hdrType)
 }
 
-func buildUeMobileIdentity5GS(nccLength, mncLength int, supi string) nasType.MobileIdentity5GS {
+func buildUeMobileIdentity5GS(nccLength, mncLength int, supi string) (*ie.MobileId5GS, error) {
 	supiBytes := util.SupiToBytes(nccLength, mncLength, supi)
-	return nasType.MobileIdentity5GS{
-		Len:    uint16(len(supiBytes)),
-		Buffer: supiBytes,
+
+	mobileIdentity5GS := new(ie.MobileId5GS)
+	if err := mobileIdentity5GS.UnmarshalBinary(supiBytes); err != nil {
+		return nil, fmt.Errorf("error unmarshal mobile identity 5gs: %+v", err)
 	}
+	return mobileIdentity5GS, nil
 }
 
-func buildUeSecurityCapability(cipheringAlgorithm uint8, integrityAlgorithm uint8) nasType.UESecurityCapability {
-	ueSecurityCapability := nasType.UESecurityCapability{
-		Iei:    nasMessage.RegistrationRequestUESecurityCapabilityType,
-		Len:    2,
-		Buffer: []byte{0x00, 0x00},
+func buildUeSecurityCapability(cipheringAlgorithm ie.AlgCiphering, integrityAlgorithm ie.AlgIntegrity) *ie.UESecCapability {
+	ueSecurityCapability := &ie.UESecCapability{
+		Length: 2,
 	}
 
 	switch cipheringAlgorithm {
-	case security.AlgCiphering128NEA0:
-		ueSecurityCapability.SetEA0_5G(1)
-	case security.AlgCiphering128NEA1:
-		ueSecurityCapability.SetEA1_128_5G(1)
-	case security.AlgCiphering128NEA2:
-		ueSecurityCapability.SetEA2_128_5G(1)
-	case security.AlgCiphering128NEA3:
-		ueSecurityCapability.SetEA3_128_5G(1)
+	case message.AlgCiphering128NEA0:
+		ueSecurityCapability.EA05G = true
+	case message.AlgCiphering128NEA1:
+		ueSecurityCapability.EA1_128_5G = true
+	case message.AlgCiphering128NEA2:
+		ueSecurityCapability.EA2_128_5G = true
+	case message.AlgCiphering128NEA3:
+		ueSecurityCapability.EA3_128_5G = true
 	}
 
 	switch integrityAlgorithm {
-	case security.AlgIntegrity128NIA0:
-		ueSecurityCapability.SetIA0_5G(1)
-	case security.AlgIntegrity128NIA1:
-		ueSecurityCapability.SetIA1_128_5G(1)
-	case security.AlgIntegrity128NIA2:
-		ueSecurityCapability.SetIA2_128_5G(1)
-	case security.AlgIntegrity128NIA3:
-		ueSecurityCapability.SetIA3_128_5G(1)
+	case message.AlgIntegrity128NIA0:
+		ueSecurityCapability.IA05G = true
+	case message.AlgIntegrity128NIA1:
+		ueSecurityCapability.IA1_128_5G = true
+	case message.AlgIntegrity128NIA2:
+		ueSecurityCapability.IA2_128_5G = true
+	case message.AlgIntegrity128NIA3:
+		ueSecurityCapability.IA3_128_5G = true
 	}
 
 	return ueSecurityCapability
 }
 
-func buildUeRegistrationRequest(registrationType uint8, mobileIdentity5GS *nasType.MobileIdentity5GS, requestedNSSAI *nasType.RequestedNSSAI, ueSecurityCapability *nasType.UESecurityCapability, capability5GMM *nasType.Capability5GMM, nasMessageContainer []uint8, uplinkDataStatus *nasType.UplinkDataStatus) ([]byte, error) {
-	m := nas.NewMessage()
-	m.GmmMessage = nas.NewGmmMessage()
-	m.GmmHeader.SetMessageType(nas.MsgTypeRegistrationRequest)
-
-	registrationRequest := nasMessage.NewRegistrationRequest(0)
-	registrationRequest.SetExtendedProtocolDiscriminator(nasMessage.Epd5GSMobilityManagementMessage)
-	registrationRequest.SpareHalfOctetAndSecurityHeaderType.SetSecurityHeaderType(nas.SecurityHeaderTypePlainNas)
-	registrationRequest.SpareHalfOctetAndSecurityHeaderType.SetSpareHalfOctet(0x00)
-	registrationRequest.RegistrationRequestMessageIdentity.SetMessageType(nas.MsgTypeRegistrationRequest)
-	registrationRequest.NgksiAndRegistrationType5GS.SetTSC(nasMessage.TypeOfSecurityContextFlagNative)
-	registrationRequest.NgksiAndRegistrationType5GS.SetNasKeySetIdentifiler(0x7)
-	registrationRequest.NgksiAndRegistrationType5GS.SetFOR(1)
-	registrationRequest.NgksiAndRegistrationType5GS.SetRegistrationType5GS(registrationType)
-	registrationRequest.MobileIdentity5GS = *mobileIdentity5GS
-
-	registrationRequest.UESecurityCapability = ueSecurityCapability
-	registrationRequest.Capability5GMM = capability5GMM
-	registrationRequest.RequestedNSSAI = requestedNSSAI
-	registrationRequest.UplinkDataStatus = uplinkDataStatus
+// buildUeRegistrationRequest returns the plain-encoded bytes of a RegReq. The
+// caller always either sends it unprotected (initial registration, before a
+// security context exists) or embeds it as a NAS message container, so no
+// security wrapping is ever applied to this message directly.
+func buildUeRegistrationRequest(registrationType uint8, mobileIdentity5GS *ie.MobileId5GS, requestedNSSAI *ie.NSSAI, ueSecurityCapability *ie.UESecCapability, capability5GMM *ie.Capability5GMM, nasMessageContainer []uint8, uplinkDataStatus *ie.UplinkDataStatus) ([]byte, error) {
+	registrationRequest := &message.RegReq{
+		RegType5GS: &ie.RegType5GS{
+			FOR_Pending: true,
+			Value:       registrationType,
+		},
+		Ngksi: &ie.NASKeySetId{
+			Tsc: ie.SecCtxTypeNative,
+			Ksi: ie.NASKeyNA,
+		},
+		MobileId5GS:      mobileIdentity5GS,
+		UESecCapability:  ueSecurityCapability,
+		Capability5GMM:   capability5GMM,
+		ReqNSSAI:         requestedNSSAI,
+		UplinkDataStatus: uplinkDataStatus,
+	}
 
 	if nasMessageContainer != nil {
-		registrationRequest.NASMessageContainer = nasType.NewNASMessageContainer(
-			nasMessage.RegistrationRequestNASMessageContainerType)
-		registrationRequest.NASMessageContainer.SetLen(uint16(len(nasMessageContainer)))
-		registrationRequest.NASMessageContainer.SetNASMessageContainerContents(nasMessageContainer)
+		registrationRequest.NASMsgCntr = &ie.NASMsgCntr{Contents: nasMessageContainer}
 	}
 
-	m.GmmMessage.RegistrationRequest = registrationRequest
-
-	request := new(bytes.Buffer)
-	if err := m.GmmMessageEncode(request); err != nil {
-		return nil, err
-	}
-
-	return request.Bytes(), nil
+	return registrationRequest.MarshalBinary()
 }
 
-func getUeRegistrationRequest(registrationType uint8, mobileIdentity5GS *nasType.MobileIdentity5GS, requestedNSSAI *nasType.RequestedNSSAI, ueSecurityCapability *nasType.UESecurityCapability, capability5GMM *nasType.Capability5GMM, nasMessageContainer []uint8, uplinkDataStatus *nasType.UplinkDataStatus) ([]byte, error) {
+func getUeRegistrationRequest(registrationType uint8, mobileIdentity5GS *ie.MobileId5GS, requestedNSSAI *ie.NSSAI, ueSecurityCapability *ie.UESecCapability, capability5GMM *ie.Capability5GMM, nasMessageContainer []uint8, uplinkDataStatus *ie.UplinkDataStatus) ([]byte, error) {
 	return buildUeRegistrationRequest(registrationType, mobileIdentity5GS, requestedNSSAI, ueSecurityCapability, capability5GMM, nasMessageContainer, uplinkDataStatus)
 }
 
+// buildAuthenticationResponse returns the plain-encoded bytes of an AuthRsp.
+// It is always sent unprotected, per 3GPP TS 24.501, since the security
+// context is not yet active at this point of the registration procedure.
 func buildAuthenticationResponse(authenticationResponseParam []byte) ([]byte, error) {
-	m := nas.NewMessage()
-	m.GmmMessage = nas.NewGmmMessage()
-	m.GmmHeader.SetMessageType(nas.MsgTypeAuthenticationResponse)
-
-	authenticationResponse := nasMessage.NewAuthenticationResponse(0)
-	authenticationResponse.ExtendedProtocolDiscriminator.SetExtendedProtocolDiscriminator(
-		nasMessage.Epd5GSMobilityManagementMessage)
-	authenticationResponse.SpareHalfOctetAndSecurityHeaderType.SetSecurityHeaderType(nas.SecurityHeaderTypePlainNas)
-	authenticationResponse.SpareHalfOctetAndSecurityHeaderType.SetSpareHalfOctet(0)
-	authenticationResponse.AuthenticationResponseMessageIdentity.SetMessageType(nas.MsgTypeAuthenticationResponse)
+	authenticationResponse := &message.AuthRsp{}
 
 	if len(authenticationResponseParam) > 0 {
-		authenticationResponse.AuthenticationResponseParameter = nasType.NewAuthenticationResponseParameter(
-			nasMessage.AuthenticationResponseAuthenticationResponseParameterType)
-		authenticationResponse.AuthenticationResponseParameter.SetLen(uint8(len(authenticationResponseParam)))
-		copy(authenticationResponse.AuthenticationResponseParameter.Octet[:], authenticationResponseParam[0:16])
+		authenticationResponse.AuthRspParam = &ie.AuthRspParam{
+			Res: authenticationResponseParam,
+		}
 	}
 
-	m.GmmMessage.AuthenticationResponse = authenticationResponse
-
-	response := new(bytes.Buffer)
-	if err := m.GmmMessageEncode(response); err != nil {
-		return nil, err
-	}
-
-	return response.Bytes(), nil
+	return authenticationResponse.MarshalBinary()
 }
 
 func getAuthenticationResponse(authenticationResponseParam []byte) ([]byte, error) {
 	return buildAuthenticationResponse(authenticationResponseParam)
 }
 
-func buildNasSecurityModeCompleteMessage(nasMessageContainer []byte) ([]byte, error) {
-	m := nas.NewMessage()
+func buildNasSecurityModeCompleteMessage(nasMessageContainer []byte) *message.SecModeComplete {
+	imeisv := &ie.MobileId5GS{
+		TypeOfId:     ie.IdType_5GS_IMEISV,
+		OddEvenIndic: ie.EvenNumOfIdDigit,
+	}
+	imeisv.IMEISV[0] = 1
+	imeisv.IMEISV[14] = 1
+	imeisv.IMEISV[15] = 1
 
-	m.GmmMessage = nas.NewGmmMessage()
-	m.GmmHeader.SetMessageType(nas.MsgTypeSecurityModeComplete)
-
-	securityModeComplete := nasMessage.NewSecurityModeComplete(0)
-	securityModeComplete.ExtendedProtocolDiscriminator.SetExtendedProtocolDiscriminator(nasMessage.Epd5GSMobilityManagementMessage)
-
-	securityModeComplete.SpareHalfOctetAndSecurityHeaderType.SetSecurityHeaderType(nas.SecurityHeaderTypePlainNas)
-	securityModeComplete.SpareHalfOctetAndSecurityHeaderType.SetSpareHalfOctet(0)
-	securityModeComplete.SecurityModeCompleteMessageIdentity.SetMessageType(nas.MsgTypeSecurityModeComplete)
-
-	securityModeComplete.IMEISV = nasType.NewIMEISV(nasMessage.SecurityModeCompleteIMEISVType)
-	securityModeComplete.IMEISV.SetLen(9)
-	securityModeComplete.SetOddEvenIdic(0)
-	securityModeComplete.SetTypeOfIdentity(nasMessage.MobileIdentity5GSTypeImeisv)
-	securityModeComplete.SetIdentityDigit1(1)
-	securityModeComplete.SetIdentityDigitP_1(1)
-	securityModeComplete.SetIdentityDigitP(1)
+	securityModeComplete := &message.SecModeComplete{
+		IMEISV: imeisv,
+	}
 
 	if nasMessageContainer != nil {
-		securityModeComplete.NASMessageContainer = nasType.NewNASMessageContainer(nasMessage.SecurityModeCompleteNASMessageContainerType)
-		securityModeComplete.NASMessageContainer.SetLen(uint16(len(nasMessageContainer)))
-		securityModeComplete.NASMessageContainer.SetNASMessageContainerContents(nasMessageContainer)
+		securityModeComplete.NASMsgCntr = &ie.NASMsgCntr{Contents: nasMessageContainer}
 	}
 
-	m.GmmMessage.SecurityModeComplete = securityModeComplete
-
-	completeMessage := new(bytes.Buffer)
-	if err := m.GmmMessageEncode(completeMessage); err != nil {
-		return nil, err
-	}
-
-	return completeMessage.Bytes(), nil
+	return securityModeComplete
 }
 
-func getNasSecurityModeCompleteMessage(nasMessageContainer []byte) ([]byte, error) {
+func getNasSecurityModeCompleteMessage(nasMessageContainer []byte) *message.SecModeComplete {
 	return buildNasSecurityModeCompleteMessage(nasMessageContainer)
 }
 
-func buildNasRegistrationCompleteMessage(sorTransparentContainer []byte) ([]byte, error) {
-	m := nas.NewMessage()
-	m.GmmMessage = nas.NewGmmMessage()
-	m.GmmHeader.SetMessageType(nas.MsgTypeRegistrationComplete)
-
-	registrationComplete := nasMessage.NewRegistrationComplete(0)
-	registrationComplete.ExtendedProtocolDiscriminator.SetExtendedProtocolDiscriminator(
-		nasMessage.Epd5GSMobilityManagementMessage)
-	registrationComplete.SpareHalfOctetAndSecurityHeaderType.SetSecurityHeaderType(nas.SecurityHeaderTypePlainNas)
-	registrationComplete.SpareHalfOctetAndSecurityHeaderType.SetSpareHalfOctet(0)
-	registrationComplete.RegistrationCompleteMessageIdentity.SetMessageType(nas.MsgTypeRegistrationComplete)
-
-	if sorTransparentContainer != nil {
-		registrationComplete.SORTransparentContainer = nasType.NewSORTransparentContainer(
-			nasMessage.RegistrationCompleteSORTransparentContainerType)
-		registrationComplete.SORTransparentContainer.SetLen(uint16(len(sorTransparentContainer)))
-		registrationComplete.SORTransparentContainer.SetSORContent(sorTransparentContainer)
-	}
-
-	m.GmmMessage.RegistrationComplete = registrationComplete
-
-	completeMessage := new(bytes.Buffer)
-	if err := m.GmmMessageEncode(completeMessage); err != nil {
-		return nil, err
-	}
-
-	return completeMessage.Bytes(), nil
+func buildNasRegistrationCompleteMessage() *message.RegComplete {
+	return &message.RegComplete{}
 }
 
-func getNasRegistrationCompleteMessage(nasMessageContainer []byte) ([]byte, error) {
-	return buildNasRegistrationCompleteMessage(nasMessageContainer)
+func getNasRegistrationCompleteMessage() *message.RegComplete {
+	return buildNasRegistrationCompleteMessage()
 }
 
+// buildPduSessionEstablishmentRequest returns the plain-encoded bytes of a
+// PDUSessEstReq. It is never sent standalone; it is always embedded as the
+// payload container of an UL NAS Transport message.
 func buildPduSessionEstablishmentRequest(pduSessionId uint8) ([]byte, error) {
-	m := nas.NewMessage()
-	m.GsmMessage = nas.NewGsmMessage()
-	m.GsmHeader.SetMessageType(nas.MsgTypePDUSessionEstablishmentRequest)
-
-	pduSessionEstablishmentRequest := nasMessage.NewPDUSessionEstablishmentRequest(0)
-	pduSessionEstablishmentRequest.ExtendedProtocolDiscriminator.SetExtendedProtocolDiscriminator(nasMessage.Epd5GSSessionManagementMessage)
-	pduSessionEstablishmentRequest.SetMessageType(nas.MsgTypePDUSessionEstablishmentRequest)
-	pduSessionEstablishmentRequest.PDUSessionID.SetPDUSessionID(pduSessionId)
-	pduSessionEstablishmentRequest.PTI.SetPTI(0x00)
-	pduSessionEstablishmentRequest.IntegrityProtectionMaximumDataRate.SetMaximumDataRatePerUEForUserPlaneIntegrityProtectionForDownLink(0xff)
-	pduSessionEstablishmentRequest.IntegrityProtectionMaximumDataRate.SetMaximumDataRatePerUEForUserPlaneIntegrityProtectionForUpLink(0xff)
-
-	pduSessionEstablishmentRequest.PDUSessionType = nasType.NewPDUSessionType(nasMessage.PDUSessionEstablishmentRequestPDUSessionTypeType)
-	pduSessionEstablishmentRequest.PDUSessionType.SetPDUSessionTypeValue(uint8(0x01)) //IPv4 type
-
-	pduSessionEstablishmentRequest.SSCMode = nasType.NewSSCMode(nasMessage.PDUSessionEstablishmentRequestSSCModeType)
-	pduSessionEstablishmentRequest.SSCMode.SetSSCMode(uint8(0x01)) //SSC Mode 1
-
-	pduSessionEstablishmentRequest.ExtendedProtocolConfigurationOptions = nasType.NewExtendedProtocolConfigurationOptions(nasMessage.PDUSessionEstablishmentRequestExtendedProtocolConfigurationOptionsType)
-	protocolConfigurationOptions := nasConvert.NewProtocolConfigurationOptions()
-	protocolConfigurationOptions.AddIPAddressAllocationViaNASSignallingUL()
-	protocolConfigurationOptions.AddDNSServerIPv4AddressRequest()
-	protocolConfigurationOptions.AddDNSServerIPv6AddressRequest()
-	pcoContents := protocolConfigurationOptions.Marshal()
-	pcoContentsLength := len(pcoContents)
-	pduSessionEstablishmentRequest.ExtendedProtocolConfigurationOptions.SetLen(uint16(pcoContentsLength))
-	pduSessionEstablishmentRequest.ExtendedProtocolConfigurationOptions.SetExtendedProtocolConfigurationOptionsContents(pcoContents)
-
-	m.GsmMessage.PDUSessionEstablishmentRequest = pduSessionEstablishmentRequest
-
-	request := new(bytes.Buffer)
-	if err := m.GsmMessageEncode(request); err != nil {
-		return nil, err
+	pduSessionEstablishmentRequest := &message.PDUSessEstReq{
+		PDUSessId: pduSessionId,
+		PTI:       0x00,
+		IntegrityProtectionMaxDataRate: &ie.IntegrityProtectionMaxDataRate{
+			Uplink:   0xff,
+			Downlink: 0xff,
+		},
+		PDUSessType: &ie.PDUSessType{
+			Value: ie.PDUSessType_IPv4,
+		},
+		SSCMode: &ie.SSCMode{
+			Mode: ie.SSCMODE1,
+		},
+		ExtendedProtCfgOpts: &ie.ExtendedProtCfgOpts{
+			FromMs: &ie.ExtCfgOptFromMs{
+				DNSV4Req: true,
+				DNSV6Req: true,
+			},
+		},
 	}
 
-	return request.Bytes(), nil
+	return pduSessionEstablishmentRequest.MarshalBinary()
 }
 
 func getPduSessionEstablishmentRequest(pduSessionId uint8) ([]byte, error) {
 	return buildPduSessionEstablishmentRequest(pduSessionId)
 }
 
-func buildUlNasTransportMessage(nasMessageContainer []byte, pduSessionId uint8, requestType uint8, dnn string, sNssai *models.Snssai) ([]byte, error) {
-	m := nas.NewMessage()
-	m.GmmMessage = nas.NewGmmMessage()
-	m.GmmHeader.SetMessageType(nas.MsgTypeULNASTransport)
-
-	ulNasTransport := nasMessage.NewULNASTransport(0)
-	ulNasTransport.SpareHalfOctetAndSecurityHeaderType.SetSecurityHeaderType(nas.SecurityHeaderTypePlainNas)
-	ulNasTransport.SetMessageType(nas.MsgTypeULNASTransport)
-	ulNasTransport.ExtendedProtocolDiscriminator.SetExtendedProtocolDiscriminator(nasMessage.Epd5GSMobilityManagementMessage)
-	ulNasTransport.PduSessionID2Value = new(nasType.PduSessionID2Value)
-	ulNasTransport.PduSessionID2Value.SetIei(nasMessage.ULNASTransportPduSessionID2ValueType)
-	ulNasTransport.PduSessionID2Value.SetPduSessionID2Value(pduSessionId)
-	ulNasTransport.RequestType = new(nasType.RequestType)
-	ulNasTransport.RequestType.SetIei(nasMessage.ULNASTransportRequestTypeType)
-	ulNasTransport.RequestType.SetRequestTypeValue(requestType)
+func buildUlNasTransportMessage(nasMessageContainer []byte, pduSessionId uint8, requestType ie.ConstReqType, dnn string, sNssai *models.Snssai) *message.ULNASTransport {
+	ulNasTransport := &message.ULNASTransport{
+		PayloadCntrType: &ie.PayloadCntrType{
+			Value: ie.PayloadCntrType_N1SMInfo,
+		},
+		PayloadCntr: &ie.PayloadCntr{
+			Pct:      ie.PayloadCntrType_N1SMInfo,
+			Contents: nasMessageContainer,
+		},
+		PDUSessID: &ie.PDUSessId2{
+			Value: pduSessionId,
+		},
+		ReqType: &ie.ReqType{
+			Value: requestType,
+		},
+	}
 
 	if dnn != "" {
-		ulNasTransport.DNN = new(nasType.DNN)
-		ulNasTransport.DNN.SetIei(nasMessage.ULNASTransportDNNType)
-		ulNasTransport.DNN.SetDNN(dnn)
+		ulNasTransport.DNN = &ie.DNN{Value: dnn}
 	}
 
 	if sNssai != nil {
-		ulNasTransport.SNSSAI = nasType.NewSNSSAI(nasMessage.ULNASTransportSNSSAIType)
-		ulNasTransport.SNSSAI.SetSST(uint8(sNssai.Sst))
-
-		if sNssai.Sd != "" {
-			var sdTemp [3]uint8
-			sd, err := hex.DecodeString(sNssai.Sd)
-			if err != nil {
-				return nil, fmt.Errorf("sNssai decode error: %v", err)
-			}
-			if len(sd) != 3 {
-				return nil, fmt.Errorf("sNssai SD length should be 3 bytes, got %d", len(sd))
-			}
-
-			copy(sdTemp[:], sd)
-			ulNasTransport.SNSSAI.SetLen(4)
-			ulNasTransport.SNSSAI.SetSD(sdTemp)
-		} else {
-			ulNasTransport.SNSSAI.SetLen(1)
+		ulNasTransport.SNSSAI = &ie.SNSSAI{
+			SST: uint8(sNssai.Sst),
+			SD:  sNssai.Sd,
 		}
 	}
 
-	ulNasTransport.SpareHalfOctetAndPayloadContainerType.SetPayloadContainerType(nasMessage.PayloadContainerTypeN1SMInfo)
-	ulNasTransport.PayloadContainer.SetLen(uint16(len(nasMessageContainer)))
-	ulNasTransport.PayloadContainer.SetPayloadContainerContents(nasMessageContainer)
-
-	m.GmmMessage.ULNASTransport = ulNasTransport
-
-	message := new(bytes.Buffer)
-	if err := m.GmmMessageEncode(message); err != nil {
-		return nil, err
-	}
-
-	return message.Bytes(), nil
+	return ulNasTransport
 }
 
-func getUlNasTransportMessage(nasMessageContainer []byte, pduSessionId uint8, requestType uint8, dnn string, sNssai *models.Snssai) ([]byte, error) {
+func getUlNasTransportMessage(nasMessageContainer []byte, pduSessionId uint8, requestType ie.ConstReqType, dnn string, sNssai *models.Snssai) *message.ULNASTransport {
 	return buildUlNasTransportMessage(nasMessageContainer, pduSessionId, requestType, dnn, sNssai)
 }
 
-func buildUeDeRegistrationRequest(accessType uint8, switchOff uint8, ngKsi uint8, mobileIdentity5GS nasType.MobileIdentity5GS) ([]byte, error) {
-	m := nas.NewMessage()
-	m.GmmMessage = nas.NewGmmMessage()
-	m.GmmHeader.SetMessageType(nas.MsgTypeDeregistrationRequestUEOriginatingDeregistration)
-
-	deregistrationRequest := nasMessage.NewDeregistrationRequestUEOriginatingDeregistration(0)
-	deregistrationRequest.ExtendedProtocolDiscriminator.SetExtendedProtocolDiscriminator(nasMessage.Epd5GSMobilityManagementMessage)
-	deregistrationRequest.SpareHalfOctetAndSecurityHeaderType.SetSecurityHeaderType(nas.SecurityHeaderTypePlainNas)
-	deregistrationRequest.SpareHalfOctetAndSecurityHeaderType.SetSpareHalfOctet(0)
-	deregistrationRequest.DeregistrationRequestMessageIdentity.SetMessageType(nas.MsgTypeDeregistrationRequestUEOriginatingDeregistration)
-
-	deregistrationRequest.NgksiAndDeregistrationType.SetAccessType(accessType)
-	deregistrationRequest.NgksiAndDeregistrationType.SetSwitchOff(switchOff)
-	deregistrationRequest.NgksiAndDeregistrationType.SetReRegistrationRequired(0)
-	deregistrationRequest.NgksiAndDeregistrationType.SetTSC(ngKsi)
-	deregistrationRequest.NgksiAndDeregistrationType.SetNasKeySetIdentifiler(ngKsi)
-	deregistrationRequest.MobileIdentity5GS.SetLen(mobileIdentity5GS.GetLen())
-	deregistrationRequest.MobileIdentity5GS.SetMobileIdentity5GSContents(mobileIdentity5GS.GetMobileIdentity5GSContents())
-
-	m.GmmMessage.DeregistrationRequestUEOriginatingDeregistration = deregistrationRequest
-
-	request := new(bytes.Buffer)
-	if err := m.GmmMessageEncode(request); err != nil {
-		return nil, err
+func buildUeDeRegistrationRequest(accessType uint8, switchOff uint8, ngKsi uint8, mobileIdentity5GS *ie.MobileId5GS) *message.DeregReqUEOrig {
+	return &message.DeregReqUEOrig{
+		DeregType: &ie.DeregType{
+			Switchoff:     switchOff&0x1 == 1,
+			ReregRequired: false,
+			AccessType:    accessType & 0x3,
+		},
+		Ngksi: &ie.NASKeySetId{
+			Tsc: ie.SecCtxType(ngKsi & 0x1),
+			Ksi: ngKsi & 0x7,
+		},
+		MobileId5GS: mobileIdentity5GS,
 	}
-
-	return request.Bytes(), nil
 }
 
-func getUeDeRegistrationRequest(accessType uint8, switchOff uint8, ngKsi uint8, mobileIdentity5GS nasType.MobileIdentity5GS) ([]byte, error) {
+func getUeDeRegistrationRequest(accessType uint8, switchOff uint8, ngKsi uint8, mobileIdentity5GS *ie.MobileId5GS) *message.DeregReqUEOrig {
 	return buildUeDeRegistrationRequest(accessType, switchOff, ngKsi, mobileIdentity5GS)
 }
 
-func getNasPduFromNasPduSessionEstablishmentAccept(nasPduSessionEstablishmentAccept *nas.Message) (*nas.Message, error) {
-	content := nasPduSessionEstablishmentAccept.DLNASTransport.GetPayloadContainerContents()
-
-	nasMessage := new(nas.Message)
-	if err := nasMessage.PlainNasDecode(&content); err != nil {
-		return nil, err
+func getNasPduFromNasPduSessionEstablishmentAccept(dlNasTransport *message.DLNASTransport) (message.GSMMessage, error) {
+	if dlNasTransport.PayloadCntr == nil {
+		return nil, errors.New("dl nas transport has no payload container")
 	}
 
-	return nasMessage, nil
+	return message.ParseGSM(dlNasTransport.PayloadCntr.Contents)
 }
