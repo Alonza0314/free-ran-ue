@@ -7,9 +7,8 @@ import (
 	"strings"
 
 	"github.com/free-ran-ue/free-ran-ue/v2/constant"
-	"github.com/free5gc/aper"
-	"github.com/free5gc/ngap"
-	"github.com/free5gc/ngap/ngapType"
+	"github.com/free5gc/ngap/ie"
+	"github.com/free5gc/ngap/message"
 )
 
 type ngapDispatcher struct{}
@@ -37,75 +36,45 @@ func (d *ngapDispatcher) start(g *Gnb) {
 }
 
 func (d *ngapDispatcher) dispatch(g *Gnb, ngapRaw []byte) {
-	ngapPdu, err := ngap.Decoder(ngapRaw)
+	ngapMsg, err := message.Parse(ngapRaw)
 	if err != nil {
 		g.NgapLog.Errorf("Error decoding NGAP PDU: %v", err)
 		return
 	}
 
-	switch ngapPdu.Present {
-	case ngapType.NGAPPDUPresentInitiatingMessage:
-		d.initiatingMessageProcessor(g, ngapPdu, ngapRaw)
-	case ngapType.NGAPPDUPresentSuccessfulOutcome:
-		d.successfulOutcomeProcessor(g, ngapPdu, ngapRaw)
+	switch msg := ngapMsg.(type) {
+	case *message.DownlinkNASTransport:
+		g.NgapLog.Debugln("Processing NGAP Downlink NAS Transport")
+		d.downLinkNASTransportProcessor(g, msg)
+	case *message.InitialContextSetupRequest:
+		g.NgapLog.Debugln("Processing NGAP Initial Context Setup")
+		d.initialContextSetupProcessor(g, msg)
+	case *message.PDUSessionResourceSetupRequest:
+		g.NgapLog.Debugln("Processing NGAP PDU Session Resource Setup")
+		d.pduSessionResourceSetupProcessor(g, msg, ngapRaw)
+	case *message.UEContextReleaseCommand:
+		g.NgapLog.Debugln("Processing NGAP UE Context Release")
+		d.ueContextReleaseProcessor(g, msg)
+	case *message.PDUSessionResourceModifyConfirm:
+		g.NgapLog.Debugln("Processing NGAP PDU Session Resource Modify Indication")
+		d.pduSessionResourceModifyIndicationProcessor(g, msg, ngapRaw)
 	default:
-		g.NgapLog.Warnf("Unknown NGAP PDU Present: %v", ngapPdu.Present)
+		g.NgapLog.Warnf("Unknown NGAP PDU message: %T", ngapMsg)
+	}
+}
+
+func (d *ngapDispatcher) downLinkNASTransportProcessor(g *Gnb, msg *message.DownlinkNASTransport) {
+	if msg.AMFUENGAPID == nil || msg.RANUENGAPID == nil || msg.NASPDU == nil {
+		g.NgapLog.Errorf("Error downlink NAS transport: missing mandatory IE")
 		return
 	}
-}
 
-func (d *ngapDispatcher) initiatingMessageProcessor(g *Gnb, ngapPdu *ngapType.NGAPPDU, ngapRaw []byte) {
-	switch ngapPdu.InitiatingMessage.ProcedureCode.Value {
-	case ngapType.ProcedureCodeDownlinkNASTransport:
-		g.NgapLog.Debugln("Processing NGAP Downlink NAS Transport")
-		d.downLinkNASTransportProcessor(g, ngapPdu)
-	case ngapType.ProcedureCodeInitialContextSetup:
-		g.NgapLog.Debugln("Processing NGAP Initial Context Setup")
-		d.initialContextSetupProcessor(g, ngapPdu)
-	case ngapType.ProcedureCodePDUSessionResourceSetup:
-		g.NgapLog.Debugln("Processing NGAP PDU Session Resource Setup")
-		d.pduSessionResourceSetupProcessor(g, ngapPdu, ngapRaw)
-	case ngapType.ProcedureCodeUEContextRelease:
-		g.NgapLog.Debugln("Processing NGAP UE Context Release")
-		d.ueContextReleaseProcessor(g, ngapPdu)
-	default:
-		g.NgapLog.Warnf("Unknown NGAP PDU Initiating Message Procedure Code: %v", ngapPdu.InitiatingMessage.ProcedureCode.Value)
-	}
-}
+	amfUeNgapId := msg.AMFUENGAPID.Value
+	ranUeNgapId := msg.RANUENGAPID.Value
 
-func (d *ngapDispatcher) successfulOutcomeProcessor(g *Gnb, ngapPdu *ngapType.NGAPPDU, ngapRaw []byte) {
-	switch ngapPdu.SuccessfulOutcome.ProcedureCode.Value {
-	case ngapType.ProcedureCodePDUSessionResourceModifyIndication:
-		g.NgapLog.Debugln("Processing NGAP PDU Session Resource Modify Indication")
-		d.pduSessionResourceModifyIndicationProcessor(g, ngapPdu, ngapRaw)
-	default:
-		g.NgapLog.Warnf("Unknown NGAP PDU Successful Outcome Procedure Code: %v", ngapPdu.SuccessfulOutcome.ProcedureCode.Value)
-	}
-}
-
-func (d *ngapDispatcher) downLinkNASTransportProcessor(g *Gnb, ngapPdu *ngapType.NGAPPDU) {
-	var (
-		downLinkNASTransportMessage []byte
-		amfUeNgapId                 int64
-		ranUeNgapId                 int64
-	)
-
-	for _, ie := range ngapPdu.InitiatingMessage.Value.DownlinkNASTransport.ProtocolIEs.List {
-		switch ie.Id.Value {
-		case ngapType.ProtocolIEIDAMFUENGAPID:
-			amfUeNgapId = ie.Value.AMFUENGAPID.Value
-		case ngapType.ProtocolIEIDRANUENGAPID:
-			ranUeNgapId = ie.Value.RANUENGAPID.Value
-		case ngapType.ProtocolIEIDNASPDU:
-			if ie.Value.NASPDU == nil {
-				g.NgapLog.Errorf("Error downlink NAS transport: NASPDU is nil")
-				return
-			}
-			downLinkNASTransportMessage = make([]byte, len(ie.Value.NASPDU.Value))
-			copy(downLinkNASTransportMessage, ie.Value.NASPDU.Value)
-			g.NgapLog.Tracef("Get downlink NAS transport message: %+v", downLinkNASTransportMessage)
-		}
-	}
+	downLinkNASTransportMessage := make([]byte, len(msg.NASPDU.Value))
+	copy(downLinkNASTransportMessage, msg.NASPDU.Value)
+	g.NgapLog.Tracef("Get downlink NAS transport message: %+v", downLinkNASTransportMessage)
 
 	ueValue, exist := g.ranUeConns.Load(ranUeNgapId)
 	if !exist {
@@ -127,29 +96,18 @@ func (d *ngapDispatcher) downLinkNASTransportProcessor(g *Gnb, ngapPdu *ngapType
 	g.NgapLog.Debugf("Send downlink NAS transport message to UE %s", ranUe.GetMobileIdentityIMSI())
 }
 
-func (d *ngapDispatcher) initialContextSetupProcessor(g *Gnb, ngapPdu *ngapType.NGAPPDU) {
-	var (
-		nasPdu      []byte
-		amfUeNgapId int64
-		ranUeNgapId int64
-	)
-
-	for _, ie := range ngapPdu.InitiatingMessage.Value.InitialContextSetupRequest.ProtocolIEs.List {
-		switch ie.Id.Value {
-		case ngapType.ProtocolIEIDAMFUENGAPID:
-			amfUeNgapId = ie.Value.AMFUENGAPID.Value
-		case ngapType.ProtocolIEIDRANUENGAPID:
-			ranUeNgapId = ie.Value.RANUENGAPID.Value
-		case ngapType.ProtocolIEIDNASPDU:
-			if ie.Value.NASPDU == nil {
-				g.NgapLog.Errorf("Error initial context setup: NASPDU is nil")
-				return
-			}
-			nasPdu = make([]byte, len(ie.Value.NASPDU.Value))
-			copy(nasPdu, ie.Value.NASPDU.Value)
-			g.NgapLog.Tracef("Get initial context setup NASPDU: %+v", nasPdu)
-		}
+func (d *ngapDispatcher) initialContextSetupProcessor(g *Gnb, msg *message.InitialContextSetupRequest) {
+	if msg.AMFUENGAPID == nil || msg.RANUENGAPID == nil || msg.NASPDU == nil {
+		g.NgapLog.Errorf("Error initial context setup: missing mandatory IE")
+		return
 	}
+
+	amfUeNgapId := msg.AMFUENGAPID.Value
+	ranUeNgapId := msg.RANUENGAPID.Value
+
+	nasPdu := make([]byte, len(msg.NASPDU.Value))
+	copy(nasPdu, msg.NASPDU.Value)
+	g.NgapLog.Tracef("Get initial context setup NASPDU: %+v", nasPdu)
 
 	ueValue, exist := g.ranUeConns.Load(ranUeNgapId)
 	if !exist {
@@ -187,36 +145,35 @@ func (d *ngapDispatcher) initialContextSetupProcessor(g *Gnb, ngapPdu *ngapType.
 	g.NgapLog.Debugln("Send initial context setup NASPDU to UE %s", ranUe.GetMobileIdentityIMSI())
 }
 
-func (d *ngapDispatcher) pduSessionResourceSetupProcessor(g *Gnb, ngapPdu *ngapType.NGAPPDU, ngapRaw []byte) {
-	var (
-		nasPdu      []byte
-		amfUeNgapId int64
-		ranUeNgapId int64
-		err         error
+func (d *ngapDispatcher) pduSessionResourceSetupProcessor(g *Gnb, msg *message.PDUSessionResourceSetupRequest, ngapRaw []byte) {
+	if msg.AMFUENGAPID == nil || msg.RANUENGAPID == nil || msg.PDUSessionResourceSetupListSUReq == nil {
+		g.NgapLog.Errorf("Error pdu session resource setup: missing mandatory IE")
+		return
+	}
 
-		pduSessionResourceSetupRequestTransfer *ngapType.PDUSessionResourceSetupRequestTransfer
+	amfUeNgapId := msg.AMFUENGAPID.Value
+	ranUeNgapId := msg.RANUENGAPID.Value
+
+	var (
+		nasPdu                                 []byte
+		pduSessionResourceSetupRequestTransfer ie.PDUSessionResourceSetupRequestTransfer
 	)
 
-	for _, ie := range ngapPdu.InitiatingMessage.Value.PDUSessionResourceSetupRequest.ProtocolIEs.List {
-		switch ie.Id.Value {
-		case ngapType.ProtocolIEIDAMFUENGAPID:
-			amfUeNgapId = ie.Value.AMFUENGAPID.Value
-		case ngapType.ProtocolIEIDRANUENGAPID:
-			ranUeNgapId = ie.Value.RANUENGAPID.Value
-		case ngapType.ProtocolIEIDPDUSessionResourceSetupListSUReq:
-			for _, pduSessionResourceSetupItem := range ie.Value.PDUSessionResourceSetupListSUReq.List {
-				nasPdu = make([]byte, len(pduSessionResourceSetupItem.PDUSessionNASPDU.Value))
-				copy(nasPdu, pduSessionResourceSetupItem.PDUSessionNASPDU.Value)
-				g.NgapLog.Tracef("Get PDU Session Resource Setup NASPDU: %+v", nasPdu)
-
-				if err := aper.UnmarshalWithParams(pduSessionResourceSetupItem.PDUSessionResourceSetupRequestTransfer, &pduSessionResourceSetupRequestTransfer, "valueExt"); err != nil {
-					g.NgapLog.Errorf("Error unmarshal pdu session resource setup request transfer: %v", err)
-					return
-				}
-				g.NgapLog.Tracef("Get PDU Session Resource Setup Request Transfer: %+v", pduSessionResourceSetupRequestTransfer)
-			}
-		case ngapType.ProtocolIEIDUEAggregateMaximumBitRate:
+	for _, pduSessionResourceSetupItem := range msg.PDUSessionResourceSetupListSUReq.List {
+		if pduSessionResourceSetupItem.PDUSessionNASPDU != nil {
+			nasPdu = make([]byte, len(pduSessionResourceSetupItem.PDUSessionNASPDU.Value))
+			copy(nasPdu, pduSessionResourceSetupItem.PDUSessionNASPDU.Value)
+			g.NgapLog.Tracef("Get PDU Session Resource Setup NASPDU: %+v", nasPdu)
 		}
+
+		if pduSessionResourceSetupItem.PDUSessionResourceSetupRequestTransfer == nil {
+			continue
+		}
+		if err := ie.UnmarshalBinary(*pduSessionResourceSetupItem.PDUSessionResourceSetupRequestTransfer, &pduSessionResourceSetupRequestTransfer); err != nil {
+			g.NgapLog.Errorf("Error unmarshal pdu session resource setup request transfer: %v", err)
+			return
+		}
+		g.NgapLog.Tracef("Get PDU Session Resource Setup Request Transfer: %+v", pduSessionResourceSetupRequestTransfer)
 	}
 
 	ueValue, exist := g.ranUeConns.Load(ranUeNgapId)
@@ -231,18 +188,21 @@ func (d *ngapDispatcher) pduSessionResourceSetupProcessor(g *Gnb, ngapPdu *ngapT
 		return
 	}
 
-	for _, item := range pduSessionResourceSetupRequestTransfer.ProtocolIEs.List {
-		switch item.Id.Value {
-		case ngapType.ProtocolIEIDPDUSessionAggregateMaximumBitRate:
-		case ngapType.ProtocolIEIDULNGUUPTNLInformation:
-			ranUe.SetUlTeid(item.Value.ULNGUUPTNLInformation.GTPTunnel.GTPTEID.Value)
-		case ngapType.ProtocolIEIDAdditionalULNGUUPTNLInformation:
-		case ngapType.ProtocolIEIDPDUSessionType:
-		case ngapType.ProtocolIEIDQosFlowSetupRequestList:
+	if pduSessionResourceSetupRequestTransfer.ProtocolIEs != nil {
+		for _, item := range pduSessionResourceSetupRequestTransfer.ProtocolIEs.List {
+			if item.ULNGUUPTNLInformation == nil {
+				continue
+			}
+			if gtpTunnel, ok := item.ULNGUUPTNLInformation.Choice.(*ie.GTPTunnel); ok && gtpTunnel.GTPTEID != nil {
+				ranUe.SetUlTeid(gtpTunnel.GTPTEID.Value)
+			}
 		}
 	}
 
-	var qosFlowPerTNLInformationItem ngapType.QosFlowPerTNLInformationItem
+	var (
+		qosFlowPerTNLInformationItem ie.QosFlowPerTNLInformationItem
+		err                          error
+	)
 	if ranUe.IsNrdcActivated() {
 		if qosFlowPerTNLInformationItem, err = g.xnPduSessionResourceSetupRequestTransfer(ranUe.GetMobileIdentityIMSI(), ngapRaw); err != nil {
 			g.XnLog.Warnf("Error xn pdu session resource setup request transfer: %v", err)
@@ -282,19 +242,18 @@ func (d *ngapDispatcher) pduSessionResourceSetupProcessor(g *Gnb, ngapPdu *ngapT
 	ranUe.GetPduSessionEstablishmentCompleteChan() <- struct{}{}
 }
 
-func (d *ngapDispatcher) ueContextReleaseProcessor(g *Gnb, ngapPdu *ngapType.NGAPPDU) {
-	var (
-		amfUeNgapId int64
-		ranUeNgapId int64
-	)
-
-	for _, ie := range ngapPdu.InitiatingMessage.Value.UEContextReleaseCommand.ProtocolIEs.List {
-		switch ie.Id.Value {
-		case ngapType.ProtocolIEIDUENGAPIDs:
-			amfUeNgapId, ranUeNgapId = ie.Value.UENGAPIDs.UENGAPIDPair.AMFUENGAPID.Value, ie.Value.UENGAPIDs.UENGAPIDPair.RANUENGAPID.Value
-		case ngapType.ProtocolIEIDCause:
-		}
+func (d *ngapDispatcher) ueContextReleaseProcessor(g *Gnb, msg *message.UEContextReleaseCommand) {
+	if msg.UENGAPIDs == nil {
+		g.NgapLog.Errorf("Error ue context release: missing mandatory IE")
+		return
 	}
+
+	uePair, ok := msg.UENGAPIDs.Choice.(*ie.UENGAPIDPair)
+	if !ok || uePair.AMFUENGAPID == nil || uePair.RANUENGAPID == nil {
+		g.NgapLog.Errorf("Error ue context release: unexpected UENGAPIDs choice")
+		return
+	}
+	amfUeNgapId, ranUeNgapId := uePair.AMFUENGAPID.Value, uePair.RANUENGAPID.Value
 
 	ueValue, exist := g.ranUeConns.Load(ranUeNgapId)
 	if !exist {
@@ -326,24 +285,21 @@ func (d *ngapDispatcher) ueContextReleaseProcessor(g *Gnb, ngapPdu *ngapType.NGA
 	ranUe.GetUeContextReleaseCompleteChan() <- struct{}{}
 }
 
-func (d *ngapDispatcher) pduSessionResourceModifyIndicationProcessor(g *Gnb, ngapPdu *ngapType.NGAPPDU, ngapRaw []byte) {
-	var (
-		amfUeNgapId int64
-		ranUeNgapId int64
-	)
+func (d *ngapDispatcher) pduSessionResourceModifyIndicationProcessor(g *Gnb, msg *message.PDUSessionResourceModifyConfirm, ngapRaw []byte) {
+	if msg.AMFUENGAPID == nil || msg.RANUENGAPID == nil {
+		g.NgapLog.Errorf("Error pdu session resource modify indication: missing mandatory IE")
+		return
+	}
 
-	for _, ie := range ngapPdu.SuccessfulOutcome.Value.PDUSessionResourceModifyConfirm.ProtocolIEs.List {
-		switch ie.Id.Value {
-		case ngapType.ProtocolIEIDAMFUENGAPID:
-			amfUeNgapId = ie.Value.AMFUENGAPID.Value
-		case ngapType.ProtocolIEIDRANUENGAPID:
-			ranUeNgapId = ie.Value.RANUENGAPID.Value
-		case ngapType.ProtocolIEIDPDUSessionResourceModifyListModCfm:
-			g.NgapLog.Infof("ran ue with ranUeNgapId %d pdu session resource modify indication successful", ranUeNgapId)
-		case ngapType.ProtocolIEIDPDUSessionResourceFailedToModifyListModCfm:
-			g.NgapLog.Errorf("ran ue with ranUeNgapId %d pdu session resource modify indication failed", ranUeNgapId)
-			return
-		}
+	amfUeNgapId := msg.AMFUENGAPID.Value
+	ranUeNgapId := msg.RANUENGAPID.Value
+
+	if msg.PDUSessionResourceFailedToModifyListModCfm != nil {
+		g.NgapLog.Errorf("ran ue with ranUeNgapId %d pdu session resource modify indication failed", ranUeNgapId)
+		return
+	}
+	if msg.PDUSessionResourceModifyListModCfm != nil {
+		g.NgapLog.Infof("ran ue with ranUeNgapId %d pdu session resource modify indication successful", ranUeNgapId)
 	}
 
 	ueValue, exist := g.ranUeConns.Load(ranUeNgapId)

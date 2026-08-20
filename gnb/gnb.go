@@ -18,18 +18,16 @@ import (
 	"github.com/free-ran-ue/free-ran-ue/v2/logger"
 	"github.com/free-ran-ue/free-ran-ue/v2/model"
 	"github.com/free-ran-ue/util"
-	"github.com/free5gc/aper"
-	"github.com/free5gc/nas"
-	"github.com/free5gc/ngap"
-	"github.com/free5gc/ngap/ngapConvert"
-	"github.com/free5gc/ngap/ngapType"
+	nasMessage "github.com/free5gc/nas/message"
+	"github.com/free5gc/ngap/ie"
+	"github.com/free5gc/ngap/message"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/sctp"
 	"github.com/gin-gonic/gin"
 )
 
 type dlTeidAndUeType struct {
-	dlTeid aper.OctetString
+	dlTeid []byte
 	ueType constant.UeType
 }
 
@@ -72,9 +70,9 @@ type Gnb struct {
 	gnbId   []byte
 	gnbName string
 
-	plmnId ngapType.PLMNIdentity
-	tai    ngapType.TAI
-	snssai ngapType.SNSSAI
+	plmnId ie.PLMNIdentity
+	tai    ie.TAI
+	snssai ie.SNSSAI
 
 	staticNrdc bool
 
@@ -466,14 +464,14 @@ func (g *Gnb) setupN2() error {
 	}
 	g.NgapLog.Tracef("NGAP setup responseRaw: %+v", responseRaw[:n])
 
-	response, err := ngap.Decoder(responseRaw[:n])
+	response, err := message.Parse(responseRaw[:n])
 	if err != nil {
 		return fmt.Errorf("error decoding NGAP setup response: %v", err)
 	}
 	g.NgapLog.Tracef("NGAP setup response: %+v", response)
 	g.NgapLog.Debugln("Received NGAP setup response from AMF")
 
-	if (response.Present != ngapType.NGAPPDUPresentSuccessfulOutcome) || (response.SuccessfulOutcome.ProcedureCode.Value != ngapType.ProcedureCodeNGSetup) {
+	if _, ok := response.(*message.NGSetupResponse); !ok {
 		return fmt.Errorf("error NGAP setup response: %+v", response)
 	}
 
@@ -481,13 +479,13 @@ func (g *Gnb) setupN2() error {
 
 	g.NgapLog.Infof("gNB ID: %s, name: %s", hex.EncodeToString(g.gnbId), g.gnbName)
 
-	plmnId := ngapConvert.PlmnIdToModels(g.plmnId)
+	plmnId := util.PlmnIdToModels(g.plmnId)
 	g.NgapLog.Infof("PLMN ID: %v", plmnId)
 
-	tai := ngapConvert.TaiToModels(g.tai)
+	tai := util.TaiToModels(g.tai)
 	g.NgapLog.Infof("TAC: %v, broadcast PLMN ID: %v", tai.Tac, tai.PlmnId)
 
-	snssai := ngapConvert.SNssaiToModels(g.snssai)
+	snssai := util.SNssaiToModels(g.snssai)
 	g.NgapLog.Infof("SST: %v, SD: %v", snssai.Sst, snssai.Sd)
 
 	g.NgapLog.Infoln("====================================")
@@ -710,11 +708,15 @@ func (g *Gnb) processUeInitialization(ranUe *RanUe) error {
 	g.NasLog.Tracef("Received %d bytes of UE registration request from UE", n)
 	ueRegistrationRequest = ueRegistrationRequest[:n]
 
-	nasMessage := nas.NewMessage()
-	if err := nasMessage.GmmMessageDecode(&ueRegistrationRequest); err != nil {
+	gmmMessage, err := nasMessage.ParseGMM(ueRegistrationRequest)
+	if err != nil {
 		return fmt.Errorf("error decode ue registration request from UE: %v", err)
 	}
-	ranUe.SetMobileIdentity5GS(nasMessage.GmmMessage.RegistrationRequest.MobileIdentity5GS)
+	registrationRequest, ok := gmmMessage.(*nasMessage.RegReq)
+	if !ok {
+		return fmt.Errorf("error decode ue registration request from UE: unexpected message type %T", gmmMessage)
+	}
+	ranUe.SetMobileIdentity5GS(registrationRequest.MobileId5GS)
 	g.NasLog.Debugf("Receive UE %s registration request from UE", ranUe.GetMobileIdentityIMSI())
 
 	ueInitialMessage, err := getInitialUeMessage(ranUe.GetRanUeId(), ueRegistrationRequest, g.plmnId, g.tai, g.gnbId)
@@ -907,10 +909,10 @@ func (g *Gnb) processUeDeRegistration(ranUe *RanUe) error {
 	return nil
 }
 
-func (g *Gnb) xnPduSessionResourceSetupRequestTransfer(imsi string, ngapPduSessionResourceSetupRequestRaw []byte) (ngapType.QosFlowPerTNLInformationItem, error) {
+func (g *Gnb) xnPduSessionResourceSetupRequestTransfer(imsi string, ngapPduSessionResourceSetupRequestRaw []byte) (ie.QosFlowPerTNLInformationItem, error) {
 	g.XnLog.Infoln("Processing XN PDU Session Resource Setup Request Transfer")
 
-	var qosFlowPerTNLInformationItem ngapType.QosFlowPerTNLInformationItem
+	var qosFlowPerTNLInformationItem ie.QosFlowPerTNLInformationItem
 
 	xnConn, err := util.TcpDialWithOptionalLocalAddress(g.xnInterface.xnDialIp, g.xnInterface.xnDialPort, "")
 	if err != nil {
@@ -949,7 +951,7 @@ func (g *Gnb) xnPduSessionResourceSetupRequestTransfer(imsi string, ngapPduSessi
 	g.XnLog.Tracef("Received XN PDU: %+v", xnPdu)
 	g.XnLog.Debugln("Receive XN PDU")
 
-	if err := aper.UnmarshalWithParams(xnPdu.Data, &qosFlowPerTNLInformationItem, "valueExt"); err != nil {
+	if err := ie.UnmarshalBinary(xnPdu.Data, &qosFlowPerTNLInformationItem); err != nil {
 		return qosFlowPerTNLInformationItem, fmt.Errorf("error unmarshal qos flow per tnl information item: %v", err)
 	}
 	g.XnLog.Tracef("Get QoS Flow per TNL Information Item: %+v", qosFlowPerTNLInformationItem)

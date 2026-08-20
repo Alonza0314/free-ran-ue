@@ -12,7 +12,6 @@ import (
 
 	"github.com/free-ran-ue/free-ran-ue/v2/constant"
 	"github.com/free-ran-ue/free-ran-ue/v2/logger"
-	"github.com/free5gc/aper"
 )
 
 type TeidGenerator struct {
@@ -27,7 +26,7 @@ func NewTeidGenerator() *TeidGenerator {
 	}
 }
 
-func (t *TeidGenerator) AllocateTeid() aper.OctetString {
+func (t *TeidGenerator) AllocateTeid() []byte {
 	t.mtx.Lock()
 	defer t.mtx.Unlock()
 
@@ -40,14 +39,14 @@ func (t *TeidGenerator) AllocateTeid() aper.OctetString {
 				panic(fmt.Errorf("error decode teid: %v", err))
 			}
 
-			return aper.OctetString(teid)
+			return []byte(teid)
 		}
 	}
 
-	return aper.OctetString{}
+	return []byte{}
 }
 
-func (t *TeidGenerator) ReleaseTeid(teid aper.OctetString) {
+func (t *TeidGenerator) ReleaseTeid(teid []byte) {
 	t.mtx.Lock()
 	defer t.mtx.Unlock()
 
@@ -122,7 +121,7 @@ func receiveGtpPacketFromN3Conn(ctx context.Context, n3Conn *net.UDPConn, ranDat
 }
 
 // format GTP packet and write to gtpChannel
-func formatGtpPacketAndWriteToGtpChannel(teid aper.OctetString, packet []byte, gtpChannel chan []byte, gnbLogger *logger.GnbLogger) {
+func formatGtpPacketAndWriteToGtpChannel(teid []byte, packet []byte, gtpChannel chan []byte, gnbLogger *logger.GnbLogger) {
 	gtpHeader := make([]byte, 12)
 
 	gtpHeader[0] = 0x32

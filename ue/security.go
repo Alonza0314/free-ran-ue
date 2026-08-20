@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/free5gc/nas"
-	"github.com/free5gc/nas/nasMessage"
-	"github.com/free5gc/nas/security"
+	"github.com/free5gc/nas/ie"
+	"github.com/free5gc/nas/message"
 	"github.com/free5gc/util/milenage"
 	"github.com/free5gc/util/ueauth"
 )
@@ -45,11 +44,11 @@ func deriveKAmf(supi string, key []byte, snName string, SQN, AK []byte) ([]byte,
 	return ueauth.GetKDFValue(Kseaf, ueauth.FC_FOR_KAMF_DERIVATION, P0, L0, P1, L1)
 }
 
-func deriveAlgorithmKey(kAmf []byte, cipheringAlgorithm, integrityAlgorithm uint8) ([]byte, []byte, error) {
+func deriveAlgorithmKey(kAmf []byte, cipheringAlgorithm ie.AlgCiphering, integrityAlgorithm ie.AlgIntegrity) ([]byte, []byte, error) {
 	// Security Key
-	P0 := []byte{security.NNASEncAlg}
+	P0 := []byte{message.NNASEncAlg}
 	L0 := ueauth.KDFLen(P0)
-	P1 := []byte{cipheringAlgorithm}
+	P1 := []byte{byte(cipheringAlgorithm)}
 	L1 := ueauth.KDFLen(P1)
 
 	kenc, err := ueauth.GetKDFValue(kAmf, ueauth.FC_FOR_ALGORITHM_KEY_DERIVATION, P0, L0, P1, L1)
@@ -58,9 +57,9 @@ func deriveAlgorithmKey(kAmf []byte, cipheringAlgorithm, integrityAlgorithm uint
 	}
 
 	// Integrity Key
-	P0 = []byte{security.NNASIntAlg}
+	P0 = []byte{message.NNASIntAlg}
 	L0 = ueauth.KDFLen(P0)
-	P1 = []byte{integrityAlgorithm}
+	P1 = []byte{byte(integrityAlgorithm)}
 	L1 = ueauth.KDFLen(P1)
 
 	kint, err := ueauth.GetKDFValue(kAmf, ueauth.FC_FOR_ALGORITHM_KEY_DERIVATION, P0, L0, P1, L1)
@@ -71,7 +70,7 @@ func deriveAlgorithmKey(kAmf []byte, cipheringAlgorithm, integrityAlgorithm uint
 	return kenc, kint, nil
 }
 
-func deriveResStarAndSetKey(supi string, cipheringAlgorithm, integrityAlgorithm uint8, sqn, amf, encPermanentKey, encOpcKey string, rand []byte, autn []byte, snName string) ([]byte, []byte, []byte, []byte, string, error) {
+func deriveResStarAndSetKey(supi string, cipheringAlgorithm ie.AlgCiphering, integrityAlgorithm ie.AlgIntegrity, sqn, amf, encPermanentKey, encOpcKey string, rand []byte, autn []byte, snName string) ([]byte, []byte, []byte, []byte, string, error) {
 	sqnHex, err := hex.DecodeString(sqn)
 	if err != nil {
 		return nil, nil, nil, nil, "", fmt.Errorf("error decode sqn: %v", err)
@@ -121,18 +120,4 @@ func deriveResStarAndSetKey(supi string, cipheringAlgorithm, integrityAlgorithm 
 		return nil, nil, nil, nil, "", fmt.Errorf("error GetKDFValue: %v", err)
 	}
 	return kAmf, kenc, kint, kdfVal_for_resStar[len(kdfVal_for_resStar)/2:], hex.EncodeToString(sqnHex), nil
-}
-
-func encodeNasPduWithSecurity(nasPdu []byte, securityHeaderType uint8, ue *Ue, securityContextAvailable bool, newSecurityContext bool) ([]byte, error) {
-	m := nas.NewMessage()
-	if err := m.PlainNasDecode(&nasPdu); err != nil {
-		return nil, err
-	}
-
-	m.SecurityHeader = nas.SecurityHeader{
-		ProtocolDiscriminator: nasMessage.Epd5GSMobilityManagementMessage,
-		SecurityHeaderType:    securityHeaderType,
-	}
-
-	return nasEncode(m, securityContextAvailable, newSecurityContext, ue)
 }
