@@ -3,6 +3,8 @@ name: Integration Test
 on:
   # push:
     # branches: [ main ]
+  schedule:
+    - cron: '14 19 * * *'  # UTC 19:14 (Local 03:14)
   pull_request:
     branches: [ main ]
   workflow_dispatch:
